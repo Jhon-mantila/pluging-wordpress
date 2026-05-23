@@ -24,7 +24,7 @@
 	grid-template-columns: 1fr 1fr;
 	grid-template-rows: repeat(3, minmax(0, 1fr));
 	gap: var(--esquina-fb-gap);
-	min-height: 420px;
+	min-height: 420px; /*Altura mínima de los cards*/
 }
 
 .esquina-fb-feed__layout.is-single-feature {

@@ -1,0 +1,111 @@
+/* [ultimas_entradas] — sin viñetas; pensado también para footer */
+
+.esquina-ultimas {
+	--esquina-ultimas-w: 100px;
+	--esquina-ultimas-h: 75px;
+	--esquina-ultimas-gap: 12px;
+	--esquina-ultimas-radius: 8px;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: var(--esquina-ultimas-gap);
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+/* Temas que fuerzan estilos de lista en el footer */
+.esquina-ultimas::before,
+.esquina-ultimas::after,
+.esquina-ultimas__item::before,
+.esquina-ultimas__item::after {
+	content: none !important;
+	display: none !important;
+}
+
+.esquina-ultimas__item {
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+.esquina-ultimas__link {
+	display: flex;
+	align-items: center;
+	gap: var(--esquina-ultimas-gap);
+	text-decoration: none;
+	color: inherit;
+	transition: opacity 0.2s ease;
+}
+
+.esquina-ultimas__link:hover {
+	opacity: 0.85;
+	text-decoration: none;
+}
+
+.esquina-ultimas__link:focus-visible {
+	outline: 2px solid rgba(66, 153, 225, 0.85);
+	outline-offset: 3px;
+	border-radius: 6px;
+}
+
+.esquina-ultimas__thumb {
+	flex: 0 0 auto;
+	display: block;
+	line-height: 0;
+}
+
+.esquina-ultimas__thumb img {
+	display: block;
+	width: var(--esquina-ultimas-w);
+	height: var(--esquina-ultimas-h);
+	max-width: var(--esquina-ultimas-w);
+	object-fit: cover;
+	border-radius: var(--esquina-ultimas-radius);
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.esquina-ultimas__title {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0 !important;
+	padding: 0 !important;
+	font-size: 0.95rem;
+	font-weight: 600;
+	line-height: 1.35;
+	color: inherit;
+}
+
+.esquina-ultimas__empty {
+	margin: 0;
+	padding: 8px 0;
+	opacity: 0.8;
+	font-size: 0.9rem;
+}
+
+/* Variante footer: más compacta y tipografía más ligera */
+.esquina-ultimas--footer {
+	--esquina-ultimas-gap: 10px;
+	--esquina-ultimas-radius: 6px;
+}
+
+.esquina-ultimas--footer .esquina-ultimas__title {
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.3;
+}
+
+/* Si el tema envuelve el shortcode en ul/li, anula viñetas en hijos */
+footer .esquina-ultimas,
+.site-footer .esquina-ultimas,
+#footer .esquina-ultimas {
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+footer .esquina-ultimas__item,
+.site-footer .esquina-ultimas__item,
+#footer .esquina-ultimas__item {
+	list-style: none !important;
+	padding-left: 0 !important;
+}

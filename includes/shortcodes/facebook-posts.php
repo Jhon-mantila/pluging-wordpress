@@ -308,14 +308,14 @@ function esquina_mf_facebook_posts_shortcode( $atts ) {
 		'esquina-fb-feed',
 		ESQUINA_MF_URL . 'assets/css/facebook-posts.css',
 		array(),
-		'1.0.1'
+		ESQUINA_MF_VERSION
 	);
 
 	wp_enqueue_script(
 		'esquina-fb-feed',
 		ESQUINA_MF_URL . 'assets/js/facebook-posts.js',
 		array(),
-		'1.0.1',
+		ESQUINA_MF_VERSION,
 		true
 	);
 
