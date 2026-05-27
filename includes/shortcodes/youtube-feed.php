@@ -6,7 +6,8 @@
  *
  * max vacío o "all" = sin límite, carga por lotes (batch) vía AJAX.
  * Largos: duración > 60 s. Shorts: ≤ 60 s.
- *
+ * columns Columnas del grid (1–6)
+ * batch Cuántos videos por lote cuando max está vacío (por defecto 6 u 8)
  * @package Mis_Funciones
  */
 
