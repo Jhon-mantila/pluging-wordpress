@@ -1,6 +1,6 @@
 <?php
 /**
- * Shortcode: [ultimas_entradas number="6" width="90" height="68" footer="true"]
+ * Shortcode: [ultimas_entradas number="6" width="90" height="68" footer="true" title_color="#ffffff"]
  *
  * Muestra las últimas entradas publicadas (máximo 10).
  * Por defecto imágenes pequeñas (100×75). Con footer="true" aún más compacto (88×66).
@@ -10,6 +10,34 @@
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
+
+/**
+ * Valida color hexadecimal (#RGB o #RRGGBB).
+ *
+ * @param string $color Color del shortcode.
+ * @return string Vacío si no es válido.
+ */
+function esquina_mf_ultimas_entradas_sanitize_color( $color ) {
+	$color = trim( (string) $color );
+	if ( $color === '' ) {
+		return '';
+	}
+
+	$sanitized = sanitize_hex_color( $color );
+	if ( $sanitized ) {
+		return $sanitized;
+	}
+
+	if ( preg_match( '/^[0-9a-f]{3}$/i', $color ) ) {
+		return sanitize_hex_color( '#' . $color );
+	}
+
+	if ( preg_match( '/^[0-9a-f]{6}$/i', $color ) ) {
+		return sanitize_hex_color( '#' . $color );
+	}
+
+	return '';
 }
 
 /**
@@ -46,10 +74,11 @@ function esquina_mf_ultimas_entradas_thumb_url( $post_id, $width, $height ) {
 function esquina_mf_ultimas_entradas( $atts ) {
 	$atts = shortcode_atts(
 		array(
-			'number' => 5,
-			'width'  => '',
-			'height' => '',
-			'footer' => 'false',
+			'number'      => 5,
+			'width'       => '',
+			'height'      => '',
+			'footer'      => 'false',
+			'title_color' => '',
 		),
 		$atts,
 		'ultimas_entradas'
@@ -107,6 +136,11 @@ function esquina_mf_ultimas_entradas( $atts ) {
 		$img_w,
 		$img_h
 	);
+
+	$title_color = esquina_mf_ultimas_entradas_sanitize_color( $atts['title_color'] );
+	if ( $title_color ) {
+		$style .= '--esquina-ultimas-title-color:' . $title_color . ';';
+	}
 
 	ob_start();
 	printf(
