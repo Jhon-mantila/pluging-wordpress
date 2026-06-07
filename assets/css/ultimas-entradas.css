@@ -73,7 +73,26 @@
 	font-size: 0.95rem;
 	font-weight: 600;
 	line-height: 1.35;
-	color: var(--esquina-ultimas-title-color, inherit);
+	color: inherit;
+}
+
+/* Color personalizado (tema/footer suele forzar color en enlaces) */
+.esquina-ultimas--has-title-color .esquina-ultimas__link,
+.esquina-ultimas--has-title-color .esquina-ultimas__link:hover,
+.esquina-ultimas--has-title-color .esquina-ultimas__link:focus {
+	color: inherit;
+}
+
+.esquina-ultimas--has-title-color .esquina-ultimas__title {
+	color: var(--esquina-ultimas-title-color) !important;
+}
+
+footer .esquina-ultimas--has-title-color .esquina-ultimas__title,
+.site-footer .esquina-ultimas--has-title-color .esquina-ultimas__title,
+#footer .esquina-ultimas--has-title-color .esquina-ultimas__title,
+footer .esquina-ultimas--has-title-color a.esquina-ultimas__link .esquina-ultimas__title,
+.site-footer .esquina-ultimas--has-title-color a.esquina-ultimas__link .esquina-ultimas__title {
+	color: var(--esquina-ultimas-title-color) !important;
 }
 
 .esquina-ultimas__empty {

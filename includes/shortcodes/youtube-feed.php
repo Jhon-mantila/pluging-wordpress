@@ -6,8 +6,9 @@
  *
  * max vacío o "all" = sin límite, carga por lotes (batch) vía AJAX.
  * Largos: duración > 60 s. Shorts: ≤ 60 s.
- * columns Columnas del grid (1–6)
- * batch Cuántos videos por lote cuando max está vacío (por defecto 6 u 8)
+ *
+ * Usa playlistItems (subidas del canal), NO search.list — ahorra cuota API.
+ *
  * @package Mis_Funciones
  */
 
@@ -16,8 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'ESQUINA_YT_SHORT_MAX_SECONDS', 60 );
-define( 'ESQUINA_YT_SEARCH_PAGE_SIZE', 50 );
-define( 'ESQUINA_YT_MAX_SEARCH_PAGES', 20 );
+define( 'ESQUINA_YT_PLAYLIST_PAGE_SIZE', 50 );
+define( 'ESQUINA_YT_MAX_PLAYLIST_PAGES', 15 );
+/** Cache de resultados (evita repetir llamadas a la API en cada visita). */
+define( 'ESQUINA_YT_CACHE_TTL', 6 * HOUR_IN_SECONDS );
 
 /**
  * @return string
@@ -98,25 +101,50 @@ function esquina_yt_remote_get_json( $url ) {
 }
 
 /**
- * Una página de búsqueda en el canal.
+ * ID de la playlist "Subidas" del canal (UC… → UU…). Sin coste de API.
+ *
+ * @param string $channel_id ID del canal.
+ * @return string
+ */
+function esquina_yt_get_uploads_playlist_id( $channel_id ) {
+	$channel_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $channel_id );
+
+	$cache_key = 'esquina_yt_uploads_pl_' . md5( $channel_id );
+	$cached    = get_transient( $cache_key );
+	if ( is_string( $cached ) && $cached !== '' ) {
+		return $cached;
+	}
+
+	$playlist_id = '';
+	if ( 0 === strpos( $channel_id, 'UC' ) && strlen( $channel_id ) >= 20 ) {
+		$playlist_id = 'UU' . substr( $channel_id, 2 );
+	}
+
+	if ( $playlist_id ) {
+		set_transient( $cache_key, $playlist_id, DAY_IN_SECONDS );
+	}
+
+	return $playlist_id;
+}
+
+/**
+ * Una página de la playlist de subidas (1 unidad de cuota vs 100 de search).
  *
  * @return array|WP_Error { ids: string[], nextPageToken: string }
  */
-function esquina_yt_search_page( $api_key, $channel_id, $page_token = '' ) {
+function esquina_yt_playlist_page( $api_key, $playlist_id, $page_token = '' ) {
 	$args = array(
 		'key'        => $api_key,
-		'channelId'  => $channel_id,
-		'part'       => 'id',
-		'type'       => 'video',
-		'order'      => 'date',
-		'maxResults' => ESQUINA_YT_SEARCH_PAGE_SIZE,
+		'playlistId' => $playlist_id,
+		'part'       => 'contentDetails',
+		'maxResults' => ESQUINA_YT_PLAYLIST_PAGE_SIZE,
 	);
 
 	if ( $page_token ) {
 		$args['pageToken'] = $page_token;
 	}
 
-	$url  = 'https://www.googleapis.com/youtube/v3/search?' . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 );
+	$url  = 'https://www.googleapis.com/youtube/v3/playlistItems?' . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 );
 	$data = esquina_yt_remote_get_json( $url );
 
 	if ( is_wp_error( $data ) ) {
@@ -126,8 +154,8 @@ function esquina_yt_search_page( $api_key, $channel_id, $page_token = '' ) {
 	$ids = array();
 	if ( ! empty( $data['items'] ) && is_array( $data['items'] ) ) {
 		foreach ( $data['items'] as $item ) {
-			if ( ! empty( $item['id']['videoId'] ) ) {
-				$ids[] = sanitize_text_field( $item['id']['videoId'] );
+			if ( ! empty( $item['contentDetails']['videoId'] ) ) {
+				$ids[] = sanitize_text_field( $item['contentDetails']['videoId'] );
 			}
 		}
 	}
@@ -138,8 +166,8 @@ function esquina_yt_search_page( $api_key, $channel_id, $page_token = '' ) {
 	}
 
 	return array(
-		'ids'            => $ids,
-		'nextPageToken'  => $next,
+		'ids'           => $ids,
+		'nextPageToken' => $next,
 	);
 }
 
@@ -279,26 +307,37 @@ function esquina_yt_matches_mode( array $row, $mode ) {
 }
 
 /**
- * Recorre páginas de la API hasta reunir $want videos (o agotar páginas).
+ * Recorre la playlist de subidas hasta reunir $want videos filtrados por duración.
+ *
+ * Coste aproximado por lote: 1 (playlistItems) + 1 (videos.list) por página.
  *
  * @return array|WP_Error { videos: array, nextPageToken: string, has_more: bool }
  */
 function esquina_yt_fetch_videos_batch( $api_key, $channel_id, $mode, $want, $page_token = '', &$seen_ids = array() ) {
 	$want = max( 1, (int) $want );
+
+	$playlist_id = esquina_yt_get_uploads_playlist_id( $channel_id );
+	if ( ! $playlist_id ) {
+		return new WP_Error(
+			'esquina_yt_no_playlist',
+			__( 'No se pudo obtener la playlist de subidas del canal.', 'esquina-mis-funciones' )
+		);
+	}
+
 	$filtered = array();
 	$token    = $page_token;
 	$pages    = 0;
 	$has_more = false;
 
-	while ( count( $filtered ) < $want && $pages < ESQUINA_YT_MAX_SEARCH_PAGES ) {
+	while ( count( $filtered ) < $want && $pages < ESQUINA_YT_MAX_PLAYLIST_PAGES ) {
 		$pages++;
-		$page = esquina_yt_search_page( $api_key, $channel_id, $token );
+		$page = esquina_yt_playlist_page( $api_key, $playlist_id, $token );
 
 		if ( is_wp_error( $page ) ) {
 			return $page;
 		}
 
-		$ids = isset( $page['ids'] ) ? $page['ids'] : array();
+		$ids   = isset( $page['ids'] ) ? $page['ids'] : array();
 		$token = isset( $page['nextPageToken'] ) ? $page['nextPageToken'] : '';
 
 		if ( empty( $ids ) ) {
@@ -309,7 +348,7 @@ function esquina_yt_fetch_videos_batch( $api_key, $channel_id, $mode, $want, $pa
 		$new_ids = array();
 		foreach ( $ids as $id ) {
 			if ( ! isset( $seen_ids[ $id ] ) ) {
-				$new_ids[] = $id;
+				$new_ids[]       = $id;
 				$seen_ids[ $id ] = true;
 			}
 		}
@@ -361,9 +400,9 @@ function esquina_yt_fetch_videos_batch( $api_key, $channel_id, $mode, $want, $pa
 	}
 
 	return array(
-		'videos'          => $filtered,
-		'nextPageToken'   => $token,
-		'has_more'        => $has_more,
+		'videos'        => $filtered,
+		'nextPageToken' => $token,
+		'has_more'      => $has_more,
 	);
 }
 
@@ -433,7 +472,7 @@ function esquina_yt_render_feed( array $args ) {
 	$first_count = $unlimited ? $batch : $max;
 	$seen_ids    = array();
 
-	$cache_key = 'esquina_yt_v4_' . md5( $channel_id . '|' . $mode . '|' . $first_count . '|' . $max . '|' . substr( hash( 'sha256', $api_key ), 0, 12 ) );
+	$cache_key = 'esquina_yt_v5_' . md5( $channel_id . '|' . $mode . '|' . $first_count . '|' . $max . '|' . substr( hash( 'sha256', $api_key ), 0, 12 ) );
 	$result    = get_transient( $cache_key );
 
 	if ( false === $result || ! is_array( $result ) ) {
@@ -441,7 +480,7 @@ function esquina_yt_render_feed( array $args ) {
 		if ( is_wp_error( $result ) ) {
 			return '<p class="esquina-yt__error">' . esc_html( $result->get_error_message() ) . '</p>';
 		}
-		set_transient( $cache_key, $result, 10 * MINUTE_IN_SECONDS );
+		set_transient( $cache_key, $result, ESQUINA_YT_CACHE_TTL );
 	} else {
 		foreach ( $result['videos'] as $v ) {
 			$seen_ids[ $v['id'] ] = true;

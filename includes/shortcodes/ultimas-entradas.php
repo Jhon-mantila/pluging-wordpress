@@ -20,8 +20,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function esquina_mf_ultimas_entradas_sanitize_color( $color ) {
 	$color = trim( (string) $color );
+	$color = trim( $color, " \t\n\r\0\x0B'\"" );
+	$color = html_entity_decode( $color, ENT_QUOTES, 'UTF-8' );
+	$color = trim( $color, " \t\n\r\0\x0B'\"" );
+
 	if ( $color === '' ) {
 		return '';
+	}
+
+	// Algunos editores codifican el # como %23.
+	if ( 0 === strpos( $color, '%23' ) ) {
+		$color = '#' . substr( $color, 3 );
 	}
 
 	$sanitized = sanitize_hex_color( $color );
@@ -139,7 +148,8 @@ function esquina_mf_ultimas_entradas( $atts ) {
 
 	$title_color = esquina_mf_ultimas_entradas_sanitize_color( $atts['title_color'] );
 	if ( $title_color ) {
-		$style .= '--esquina-ultimas-title-color:' . $title_color . ';';
+		$classes .= ' esquina-ultimas--has-title-color';
+		$style   .= '--esquina-ultimas-title-color:' . $title_color . ';';
 	}
 
 	ob_start();
@@ -179,7 +189,7 @@ function esquina_mf_ultimas_entradas( $atts ) {
 						decoding="async"
 					/>
 				</span>
-				<span class="esquina-ultimas__title"><?php echo esc_html( $title ); ?></span>
+				<span class="esquina-ultimas__title"<?php echo $title_color ? ' style="color:' . esc_attr( $title_color ) . ';"' : ''; ?>><?php echo esc_html( $title ); ?></span>
 			</a>
 		</div>
 		<?php
