@@ -20,7 +20,7 @@ define( 'ESQUINA_YT_SHORT_MAX_SECONDS', 60 );
 define( 'ESQUINA_YT_PLAYLIST_PAGE_SIZE', 50 );
 define( 'ESQUINA_YT_MAX_PLAYLIST_PAGES', 15 );
 /** Cache de resultados (evita repetir llamadas a la API en cada visita). */
-define( 'ESQUINA_YT_CACHE_TTL', 6 * HOUR_IN_SECONDS );
+define( 'ESQUINA_YT_CACHE_TTL', 12 * HOUR_IN_SECONDS );
 
 /**
  * @return string
