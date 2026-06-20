@@ -1,0 +1,114 @@
+.esquina-recomendaciones {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #ddd;
+}
+
+.esquina-recomendaciones h2 {
+    margin-bottom: 20px;
+}
+
+.esquina-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(250px,1fr));
+    gap: 20px;
+}
+
+.esquina-card {
+    border: 1px solid #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: .3s;
+}
+
+.esquina-card:hover {
+    transform: translateY(-4px);
+}
+
+.esquina-card img {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+}
+
+.esquina-card h3 {
+    padding: 10px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.esquina-category-link {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.esquina-category-link a {
+    font-weight: bold;
+}
+
+/* Carrusel Netflix */
+
+.esquina-carousel{
+    display:flex;
+    gap:20px;
+    overflow-x:auto;
+    scroll-behavior:smooth;
+    padding-bottom:15px;
+}
+
+.esquina-carousel .esquina-card{
+    flex-shrink:0;
+}
+
+.esquina-carousel::-webkit-scrollbar{
+    height:8px;
+}
+
+.esquina-carousel::-webkit-scrollbar-thumb{
+    background:#888;
+    border-radius:10px;
+}
+
+.esquina-carousel-wrapper {
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.esquina-prev,
+.esquina-next {
+    flex-shrink:0;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#222;
+    color:#fff;
+}
+
+.esquina-prev{
+    left:0;
+}
+
+.esquina-next{
+    right:0;
+}
+
+/* Tamaño de las tarjetas grid y carrusel*/
+.esquina-size-small .esquina-card {
+    min-width: 140px;
+    max-width: 140px;
+}
+
+.esquina-size-medium .esquina-card {
+    min-width: 180px;
+    max-width: 180px;
+}
+
+.esquina-size-large .esquina-card {
+    min-width: 240px;
+    max-width: 240px;
+}
+
+.hidden {
+    display: none;
+}
