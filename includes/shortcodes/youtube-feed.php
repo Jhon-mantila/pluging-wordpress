@@ -26,11 +26,28 @@ define( 'ESQUINA_YT_CACHE_TTL', 12 * HOUR_IN_SECONDS );
  * @return string
  */
 function esquina_yt_resolve_api_key( $from_shortcode ) {
-	if ( defined( 'ESQUINA_YT_API_KEY' ) && ESQUINA_YT_API_KEY ) {
+
+	$options = get_option(
+		'esquina_youtube_settings',
+		[]
+	);
+
+	if ( ! empty( $options['api_key'] ) ) {
+		return trim(
+			$options['api_key']
+		);
+	}
+
+	if (
+		defined('ESQUINA_YT_API_KEY')
+		&& ESQUINA_YT_API_KEY
+	) {
 		return ESQUINA_YT_API_KEY;
 	}
-	$key = is_string( $from_shortcode ) ? trim( $from_shortcode ) : '';
-	return (string) apply_filters( 'esquina_yt_api_key', $key );
+
+	return is_string($from_shortcode)
+		? trim($from_shortcode)
+		: '';
 }
 
 /**
@@ -677,13 +694,19 @@ add_action( 'wp_ajax_nopriv_esquina_yt_more', 'esquina_yt_ajax_load_more' );
  * [youtube_largo]
  */
 function esquina_mf_youtube_largo_shortcode( $atts ) {
+
+	$options = get_option(
+		'esquina_youtube_settings',
+		[]
+	);
+
 	$atts = shortcode_atts(
 		array(
-			'channel_id' => '',
-			'api_key'    => '',
-			'max'        => '6',
-			'columns'    => '3',
-			'batch'      => '6',
+			'channel_id' => $options['channel_id'] ?? '',
+			'api_key'    => $options['api_key'] ?? '',
+			'max'        => $options['max_largos'] ?? '6',
+			'columns'    => $options['columns_largos'] ?? '3',
+			'batch'      => $options['batch_largos'] ?? '6',
 		),
 		$atts,
 		'youtube_largo'
@@ -705,13 +728,19 @@ function esquina_mf_youtube_largo_shortcode( $atts ) {
  * [youtube_shorts]
  */
 function esquina_mf_youtube_shorts_shortcode( $atts ) {
+
+	$options = get_option(
+		'esquina_youtube_settings',
+		[]
+	);
+
 	$atts = shortcode_atts(
 		array(
-			'channel_id' => '',
-			'api_key'    => '',
-			'max'        => '6',
-			'columns'    => '4',
-			'batch'      => '8',
+			'channel_id' => $options['channel_id'] ?? '',
+			'api_key'    => $options['api_key'] ?? '',
+			'max'        => $options['max_shorts'] ?? '6',
+			'columns'    => $options['columns_shorts'] ?? '4',
+			'batch'      => $options['batch_shorts'] ?? '8',
 		),
 		$atts,
 		'youtube_shorts'

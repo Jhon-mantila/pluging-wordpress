@@ -93,18 +93,18 @@
     right:0;
 }
 
-/* Tamaño de las tarjetas grid y carrusel*/
-.esquina-size-small .esquina-card {
+/* tamaños SOLO cuando es carousel */
+.esquina-carousel.esquina-size-small .esquina-card {
     min-width: 140px;
     max-width: 140px;
 }
 
-.esquina-size-medium .esquina-card {
+.esquina-carousel.esquina-size-medium .esquina-card {
     min-width: 180px;
     max-width: 180px;
 }
 
-.esquina-size-large .esquina-card {
+.esquina-carousel.esquina-size-large .esquina-card {
     min-width: 240px;
     max-width: 240px;
 }
