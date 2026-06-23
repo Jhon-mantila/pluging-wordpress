@@ -18,21 +18,33 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return string
  */
 function esquina_fb_get_access_token() {
-	if ( defined( 'ESQUINA_FB_PAGE_ACCESS_TOKEN' ) && ESQUINA_FB_PAGE_ACCESS_TOKEN ) {
-		return ESQUINA_FB_PAGE_ACCESS_TOKEN;
-	}
+    $options = get_option(
+        'esquina_facebook_settings',
+        []
+    );
 
-	$opt = get_option( 'esquina_fb_page_access_token', '' );
-	if ( is_string( $opt ) && $opt !== '' ) {
-		return $opt;
-	}
+    if (
+        !empty(
+            $options['access_token']
+        )
+    ) {
+        return trim(
+            $options['access_token']
+        );
+    }
 
-	/**
-	 * Permite inyectar el token desde otro plugin o mu-plugin.
-	 *
-	 * @param string $token Token vacío por defecto.
-	 */
-	return (string) apply_filters( 'esquina_fb_access_token', '' );
+    if (
+        defined('ESQUINA_FB_PAGE_ACCESS_TOKEN')
+        &&
+        ESQUINA_FB_PAGE_ACCESS_TOKEN
+    ) {
+        return ESQUINA_FB_PAGE_ACCESS_TOKEN;
+    }
+
+    return (string) apply_filters(
+        'esquina_fb_access_token',
+        ''
+    );
 }
 
 /**
@@ -286,11 +298,22 @@ function esquina_fb_fetch_posts_request( $page_id, $limit, $after = '' ) {
  * @return string
  */
 function esquina_mf_facebook_posts_shortcode( $atts ) {
+	
+	$options = get_option(
+		'esquina_facebook_settings',
+		[]
+	);
+	
 	$atts = shortcode_atts(
 		array(
-			'page_id'  => '',
-			'limit'    => 25,
-			'per_page' => 4,
+			'page_id' =>
+				$options['page_id'] ?? '',
+	
+			'limit' =>
+				$options['limit'] ?? 25,
+	
+			'per_page' =>
+				$options['per_page'] ?? 4,
 		),
 		$atts,
 		'facebook_posts'

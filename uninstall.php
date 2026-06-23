@@ -19,3 +19,11 @@ delete_option('esquina_recomendaciones_settings');
 */
 
 delete_option('esquina_youtube_settings');
+
+/*
+|--------------------------------------------------------------------------
+| Facebook
+|--------------------------------------------------------------------------
+*/
+
+delete_option('esquina_facebook_settings');

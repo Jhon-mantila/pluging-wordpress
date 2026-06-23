@@ -24,7 +24,9 @@ define( 'ESQUINA_MF_URL', plugin_dir_url( __FILE__ ) );
 para mostrar el menu en el panel de admin
 */
 require_once ESQUINA_MF_PATH . 'includes/admin/menu.php';
+require_once ESQUINA_MF_PATH . 'includes/recomendaciones/admin-settings.php';
 require_once ESQUINA_MF_PATH . 'includes/youtube/admin-settings.php';
+require_once ESQUINA_MF_PATH . 'includes/facebook/admin-settings.php';
 
 require_once ESQUINA_MF_PATH . 'includes/shortcodes/category-post-count.php';
 require_once ESQUINA_MF_PATH . 'includes/shortcodes/categorias-grid.php';
@@ -34,5 +36,5 @@ require_once ESQUINA_MF_PATH . 'includes/shortcodes/youtube-feed.php';
 /*
 para mostrar las recomendaciones al final de las publicaciones
 */
-require_once ESQUINA_MF_PATH . 'includes/recomendaciones/admin-settings.php';
+
 require_once ESQUINA_MF_PATH . 'includes/recomendaciones/recomendaciones.php';
