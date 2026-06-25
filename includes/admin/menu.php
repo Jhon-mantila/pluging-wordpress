@@ -53,11 +53,24 @@ function esquinaweb_dashboard_page()
                 <a href="https://www.youtube.com/@EsquinaStudio" target="_blank">EsquinaStudio</a>
             </div>
 
+            <!-- TIKTOK -->
+            <div class="esquina-card">
+                <h2>▶️ TikTok</h2>
+                <a href="https://www.tiktok.com/@esquina.studio2" target="_blank">EsquinaStudio</a>
+            </div>
+
             <!-- PROFESIONAL -->
             <div class="esquina-card">
                 <h2>💼 Profesional</h2>
                 <a href="https://www.linkedin.com/in/jhon-edinson-mantilla-ruiz-b2038b207/" target="_blank">LinkedIn</a>
                 <a href="https://github.com/Jhon-mantila" target="_blank">GitHub Perfil</a>
+            </div>
+
+            <!-- DOCUMENTACION -->
+            <div class="esquina-card">
+                <h2>📘 Documentación</h2>
+                <a href="https://esquinaweb.com/base-de-conocimiento/" target="_blank">Base de Conocimiento</a>
+                <a href="https://esquinaweb.com/base-de-conocimiento/documentacion-plugin-wordpress-shortcodes-youtube-facebook-y-categorias/" target="_blank">Documentación</a>
             </div>
 
             <!-- PLUGIN -->
@@ -70,7 +83,7 @@ function esquinaweb_dashboard_page()
         </div>
 
         <div class="esquina-footer">
-            💡 Hecho con ❤️ por Jhon Mantilla — Esquina Studio
+            💡 Hecho con ❤️ por Jhon Mantilla — Esquina Web
         </div>
     </div>
 

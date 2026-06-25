@@ -1,0 +1,150 @@
+.esquina-grid-2{
+    display:grid;
+    grid-template-columns:repeat(var(--columns,3),1fr);
+    gap:24px;
+}
+
+.esquina-grid2-card{
+    background:#fff;
+    border-radius:28px;
+    overflow:hidden;
+    position:relative;
+    /*height:520px;*/
+	aspect-ratio:2/3;
+    box-shadow:0 15px 40px rgba(0,0,0,.12);
+}
+
+.esquina-grid2-card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+
+    background:
+    linear-gradient(
+        to top,
+        rgba(0,0,0,.95) 0%,
+        rgba(0,0,0,.75) 25%,
+        rgba(0,0,0,0) 70%
+    );
+
+    z-index:1;
+}
+.esquina-grid2-image{
+    display:block;
+}
+
+.esquina-grid2-image img{
+    width:100%;
+    height:100%;
+    aspect-ratio:2/3;
+    object-fit:cover;
+
+    transition:.4s;
+}
+
+.esquina-grid2-content{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+
+    padding:24px;
+    min-height:30%;
+    transition:.35s;
+
+    z-index:2;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+}
+
+.esquina-grid2-content h3{
+    margin:0 0 12px;
+    font-size:1.4rem;
+    transform:translateY(160px);
+    color:#fff;
+    transition:.35s;
+}
+
+.esquina-grid2-content h3 a{
+    color:inherit;
+    text-decoration:none;
+}
+
+.esquina-grid2-excerpt{
+    opacity:0;
+    transform:translateY(50px);
+    transition:.35s;
+    color:#444;
+}
+
+.esquina-grid2-footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    opacity:0;
+    transform:translateY(40px);
+    transition:.35s;
+}
+
+.esquina-grid2-date{
+    font-size:.85rem;
+    color:#555;
+}
+
+.esquina-grid2-button{
+    text-decoration:none;
+    padding:12px 20px;
+    border-radius:40px;
+    background:#111;
+    color:#fff;
+}
+
+.esquina-grid2-card:hover::before{
+    opacity:0;
+}
+.esquina-grid2-card:hover .esquina-grid2-content{
+    min-height:70%;
+    background:#fff;
+}
+.esquina-grid2-card:hover .esquina-grid2-image img{
+    aspect-ratio:1/1;
+    object-position:center top;
+    transform:scale(1.05);
+}
+
+.esquina-grid2-card:hover h3{
+    color:#222;
+    transform:translateY(0);
+}
+
+.esquina-grid2-card:hover .esquina-grid2-excerpt{
+    height:75%;
+    opacity:1;
+    transform:translateY(0);
+}
+
+.esquina-grid2-card:hover .esquina-grid2-footer{
+    opacity:1;
+    transform:translateY(0);
+}
+
+/* Tablet */
+@media (max-width: 600px) {
+    .esquina-grid-2{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+/* Celular */
+@media (max-width: 400px) {
+    .esquina-grid-2{
+        grid-template-columns:1fr;
+    }
+   .esquina-grid2-content h3{
+       transform:translateY(110px);
+   }
+
+
+}

@@ -12,67 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * Valida color hexadecimal (#RGB o #RRGGBB).
- *
- * @param string $color Color del shortcode.
- * @return string Vacío si no es válido.
- */
-function esquina_mf_ultimas_entradas_sanitize_color( $color ) {
-	$color = trim( (string) $color );
-	$color = trim( $color, " \t\n\r\0\x0B'\"" );
-	$color = html_entity_decode( $color, ENT_QUOTES, 'UTF-8' );
-	$color = trim( $color, " \t\n\r\0\x0B'\"" );
-
-	if ( $color === '' ) {
-		return '';
-	}
-
-	// Algunos editores codifican el # como %23.
-	if ( 0 === strpos( $color, '%23' ) ) {
-		$color = '#' . substr( $color, 3 );
-	}
-
-	$sanitized = sanitize_hex_color( $color );
-	if ( $sanitized ) {
-		return $sanitized;
-	}
-
-	if ( preg_match( '/^[0-9a-f]{3}$/i', $color ) ) {
-		return sanitize_hex_color( '#' . $color );
-	}
-
-	if ( preg_match( '/^[0-9a-f]{6}$/i', $color ) ) {
-		return sanitize_hex_color( '#' . $color );
-	}
-
-	return '';
-}
-
-/**
- * Obtiene URL de miniatura con medidas aproximadas.
- *
- * @param int $post_id ID del post.
- * @param int $width   Ancho deseado.
- * @param int $height  Alto deseado.
- * @return string
- */
-function esquina_mf_ultimas_entradas_thumb_url( $post_id, $width, $height ) {
-	$thumb_id = get_post_thumbnail_id( $post_id );
-
-	if ( $thumb_id ) {
-		$src = wp_get_attachment_image_src( $thumb_id, array( $width, $height ) );
-		if ( ! empty( $src[0] ) ) {
-			return $src[0];
-		}
-		$url = get_the_post_thumbnail_url( $post_id, 'thumbnail' );
-		if ( $url ) {
-			return $url;
-		}
-	}
-
-	return '';
-}
 
 /**
  * Lista horizontal: imagen destacada a la izquierda, título a la derecha.
@@ -88,6 +27,8 @@ function esquina_mf_ultimas_entradas( $atts ) {
 			'height'      => '',
 			'footer'      => 'false',
 			'title_color' => '',
+			'layout'      => 'vertical',
+			'columns'     => 3,
 		),
 		$atts,
 		'ultimas_entradas'
@@ -112,12 +53,37 @@ function esquina_mf_ultimas_entradas( $atts ) {
 	$img_w = min( 200, max( 48, $img_w ) );
 	$img_h = min( 200, max( 48, $img_h ) );
 
-	wp_enqueue_style(
-		'esquina-ultimas-entradas',
-		ESQUINA_MF_URL . 'assets/css/ultimas-entradas.css',
-		array(),
-		ESQUINA_MF_VERSION
-	);
+	$layout = sanitize_key( $atts['layout'] );
+	$columns = min(6, max(1, intval($atts['columns'])));
+
+	if ($layout === 'grid-1') {
+
+		wp_enqueue_style(
+			'esquina-grid1',
+			ESQUINA_MF_URL . 'assets/css/ultimas-entradas/grid-1.css',
+			[],
+			ESQUINA_MF_VERSION
+		);
+	
+	} elseif ($layout === 'grid-2') {
+	
+		wp_enqueue_style(
+			'esquina-grid2',
+			ESQUINA_MF_URL . 'assets/css/ultimas-entradas/grid-2.css',
+			[],
+			ESQUINA_MF_VERSION
+		);
+	
+	} else {
+	
+		wp_enqueue_style(
+			'esquina-vertical',
+			ESQUINA_MF_URL . 'assets/css/ultimas-entradas.css',
+			[],
+			ESQUINA_MF_VERSION
+		);
+	
+	}
 
 	$query = new WP_Query(
 		array(
@@ -135,71 +101,13 @@ function esquina_mf_ultimas_entradas( $atts ) {
 		return '<p class="esquina-ultimas__empty">' . esc_html__( 'No hay entradas publicadas.', 'esquina-mis-funciones' ) . '</p>';
 	}
 
-	$classes = 'esquina-ultimas';
-	if ( $is_footer ) {
-		$classes .= ' esquina-ultimas--footer';
-	}
 
-	$style = sprintf(
-		'--esquina-ultimas-w:%dpx;--esquina-ultimas-h:%dpx;',
-		$img_w,
-		$img_h
-	);
-
-	$title_color = esquina_mf_ultimas_entradas_sanitize_color( $atts['title_color'] );
-	if ( $title_color ) {
-		$classes .= ' esquina-ultimas--has-title-color';
-		$style   .= '--esquina-ultimas-title-color:' . $title_color . ';';
-	}
-
-	ob_start();
-	printf(
-		'<div class="%s" style="%s" role="list">',
-		esc_attr( $classes ),
-		esc_attr( $style )
-	);
-
-	while ( $query->have_posts() ) {
-		$query->the_post();
-
-		$post_id = get_the_ID();
-		$title   = get_the_title();
-		$url     = get_permalink();
-		$thumb   = esquina_mf_ultimas_entradas_thumb_url( $post_id, $img_w, $img_h );
-
-		if ( ! $thumb ) {
-			$thumb = sprintf(
-				'https://via.placeholder.com/%1$dx%2$d?text=%3$s',
-				$img_w,
-				$img_h,
-				rawurlencode( wp_trim_words( $title, 3, '…' ) )
-			);
-		}
-
-		?>
-		<div class="esquina-ultimas__item" role="listitem">
-			<a class="esquina-ultimas__link" href="<?php echo esc_url( $url ); ?>">
-				<span class="esquina-ultimas__thumb">
-					<img
-						src="<?php echo esc_url( $thumb ); ?>"
-						alt="<?php echo esc_attr( $title ); ?>"
-						width="<?php echo esc_attr( (string) $img_w ); ?>"
-						height="<?php echo esc_attr( (string) $img_h ); ?>"
-						loading="lazy"
-						decoding="async"
-					/>
-				</span>
-				<span class="esquina-ultimas__title"<?php echo $title_color ? ' style="color:' . esc_attr( $title_color ) . ';"' : ''; ?>><?php echo esc_html( $title ); ?></span>
-			</a>
-		</div>
-		<?php
-	}
-
-	echo '</div>';
+	// 👇 AQUÍ SE RENDERIZA TODO
+	$output = esquina_ultimas_render_layout($layout, $query, $atts);
 
 	wp_reset_postdata();
 
-	return ob_get_clean();
+	return $output;
 }
 
 add_shortcode( 'ultimas_entradas', 'esquina_mf_ultimas_entradas' );
