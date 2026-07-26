@@ -3,7 +3,7 @@
  * Plugin Name: Mis funciones
  * Plugin URI: https://esquinaweb.com
  * Description: Snippets y shortcodes (categorías, conteos, feed Facebook, últimas entradas, YouTube) (recomendaciones).
- * Version: 1.5.95
+ * Version: 1.6.3
  * Author: Jhon mantilla
  * Author URI: https://esquinaweb.com
  * License: GPLv2 or later
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ESQUINA_MF_VERSION', '1.5.95' );
+define( 'ESQUINA_MF_VERSION', '1.6.3' );
 define( 'ESQUINA_MF_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ESQUINA_MF_URL', plugin_dir_url( __FILE__ ) );
 
@@ -26,6 +26,7 @@ para mostrar el menu en el panel de admin
 require_once ESQUINA_MF_PATH . 'includes/admin/menu.php';
 require_once ESQUINA_MF_PATH . 'includes/recomendaciones/admin-settings.php';
 require_once ESQUINA_MF_PATH . 'includes/youtube/admin-settings.php';
+require_once ESQUINA_MF_PATH . 'includes/facebook/oauth.php';
 require_once ESQUINA_MF_PATH . 'includes/facebook/admin-settings.php';
 
 require_once ESQUINA_MF_PATH . 'includes/ultimas_entradas/helpers/ultimas-entradas-utils.php';

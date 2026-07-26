@@ -2,8 +2,7 @@
 /**
  * Shortcode: [facebook_posts page_id="631930116676494" limit="25" per_page="4"]
  *
- * Token (no lo pongas en el código): en wp-config.php define el constante
- * ESQUINA_FB_PAGE_ACCESS_TOKEN o guarda la opción esquina_fb_page_access_token.
+ * Token: Esquina Web → Facebook (Conectar) o constante ESQUINA_FB_PAGE_ACCESS_TOKEN.
  *
  * @package Mis_Funciones
  */
