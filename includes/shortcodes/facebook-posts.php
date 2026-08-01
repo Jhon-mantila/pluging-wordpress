@@ -390,7 +390,9 @@ function esquina_mf_facebook_posts_shortcode( $atts ) {
 		<div class="esquina-fb-modal" hidden>
 			<div class="esquina-fb-modal__backdrop" tabindex="-1"></div>
 			<div class="esquina-fb-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="<?php echo esc_attr( $uid ); ?>-title">
-				<button type="button" class="esquina-fb-modal__close" aria-label="<?php esc_attr_e( 'Cerrar', 'esquina-mis-funciones' ); ?>">×</button>
+				<button type="button" class="esquina-fb-modal__close" aria-label="<?php esc_attr_e( 'Cerrar', 'esquina-mis-funciones' ); ?>">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+				</button>
 				<div class="esquina-fb-modal__media"></div>
 				<div class="esquina-fb-modal__body">
 					<h2 id="<?php echo esc_attr( $uid ); ?>-title" class="screen-reader-text"><?php esc_html_e( 'Publicación', 'esquina-mis-funciones' ); ?></h2>
