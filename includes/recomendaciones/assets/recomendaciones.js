@@ -6,87 +6,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let interval;
 
+        function getScrollStep() {
+            const card = carousel.querySelector('.esquina-card');
+
+            if (!card) {
+                return 200;
+            }
+
+            const styles = window.getComputedStyle(carousel);
+            const gap = parseFloat(styles.columnGap || styles.gap || '16') || 16;
+
+            return card.offsetWidth + gap;
+        }
+
         function startAutoScroll() {
+
+            if (!window.esquinaRecSettings || !esquinaRecSettings.autoplay) {
+                return;
+            }
 
             interval = setInterval(() => {
 
-                carousel.scrollBy({
-                    left: 200,
-                    behavior: 'smooth'
-                });
-
-                const maxScroll =
-                    carousel.scrollWidth -
-                    carousel.clientWidth;
+                const step = getScrollStep();
+                const maxScroll = carousel.scrollWidth - carousel.clientWidth;
 
                 if (carousel.scrollLeft >= maxScroll - 10) {
-
-                    carousel.scrollTo({
-                        left: 0,
-                        behavior: 'smooth'
-                    });
-
+                    carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                    return;
                 }
 
-            }, esquinaRecSettings.speed || 5000);
+                carousel.scrollBy({ left: step, behavior: 'smooth' });
 
+            }, esquinaRecSettings.speed || 5000);
         }
 
         function stopAutoScroll() {
             clearInterval(interval);
         }
 
-        if (esquinaRecSettings.autoplay) {
+        if (window.esquinaRecSettings && esquinaRecSettings.autoplay) {
             startAutoScroll();
         }
 
-        carousel.addEventListener(
-            'mouseenter',
-            stopAutoScroll
-        );
+        carousel.addEventListener('mouseenter', stopAutoScroll);
+        carousel.addEventListener('mouseleave', startAutoScroll);
 
-        carousel.addEventListener(
-            'mouseleave',
-            startAutoScroll
-        );
+        const wrapper = carousel.closest('.esquina-carousel-viewport');
 
-    });
+        if (!wrapper) {
+            return;
+        }
 
-});
+        const prev = wrapper.querySelector('.esquina-prev');
+        const next = wrapper.querySelector('.esquina-next');
 
-document.querySelectorAll('.esquina-next')
-.forEach(btn => {
+        if (prev) {
+            prev.addEventListener('click', () => {
+                carousel.scrollBy({ left: -getScrollStep(), behavior: 'smooth' });
+            });
+        }
 
-    btn.addEventListener('click', () => {
-
-        const carousel =
-            btn.parentElement.querySelector(
-                '.esquina-carousel'
-            );
-
-        carousel.scrollBy({
-            left:300,
-            behavior:'smooth'
-        });
-
-    });
-
-});
-
-document.querySelectorAll('.esquina-prev')
-.forEach(btn => {
-
-    btn.addEventListener('click', () => {
-
-        const carousel =
-            btn.parentElement.querySelector(
-                '.esquina-carousel'
-            );
-
-        carousel.scrollBy({
-            left:-300,
-            behavior:'smooth'
-        });
+        if (next) {
+            next.addEventListener('click', () => {
+                carousel.scrollBy({ left: getScrollStep(), behavior: 'smooth' });
+            });
+        }
 
     });
 

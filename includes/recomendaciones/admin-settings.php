@@ -152,6 +152,32 @@ function esquina_recomendaciones_page()
 
                 </td>
             </tr>
+
+            <tr>
+                <th>Título largo</th>
+                <td>
+
+                    <select name="esquina_recomendaciones_settings[title_mode]">
+
+                        <option value="clamp"
+                            <?php selected($options['title_mode'] ?? 'clamp', 'clamp'); ?>>
+                            Recortar con puntos suspensivos (3 líneas)
+                        </option>
+
+                        <option value="wrap"
+                            <?php selected($options['title_mode'] ?? '', 'wrap'); ?>>
+                            Mostrar completo en varias líneas
+                        </option>
+
+                    </select>
+
+                    <p class="description">
+                        El ancho de la tarjeta se mantiene fijo en carrusel; solo cambia cómo se muestra el título.
+                    </p>
+
+                </td>
+            </tr>
+
             <?php if ($options['layout'] === 'carousel') : ?>
             <tr>
                 <th>Autoplay</th>

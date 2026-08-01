@@ -60,6 +60,8 @@ function esquina_recomendaciones_content($content)
     // Diseño
     $layout = $settings['layout'] ?? 'grid';
     $size = $settings['size'] ?? 'medium';
+    $title_mode = $settings['title_mode'] ?? 'clamp';
+    $title_class = $title_mode === 'wrap' ? 'esquina-title-wrap' : 'esquina-title-clamp';
     // Categoría
     $categorias = get_the_category();
 
@@ -93,7 +95,7 @@ function esquina_recomendaciones_content($content)
 
     ?>
 
-    <section class="esquina-recomendaciones <?php echo $layout === 'carousel' ? 'esquina-size-' . esc_attr($size) : ''; ?>">
+    <section class="esquina-recomendaciones <?php echo esc_attr($title_class); ?> <?php echo $layout === 'carousel' ? 'esquina-size-' . esc_attr($size) : ''; ?>">
 
         <h2>
             <?php
@@ -109,11 +111,13 @@ function esquina_recomendaciones_content($content)
 
             <div class="esquina-carousel-wrapper">
 
-                <button class="esquina-prev">
-                    ←
-                </button>
+                <div class="esquina-carousel-viewport">
 
-                <div class="esquina-carousel">
+                    <button type="button" class="esquina-nav esquina-prev" aria-label="Anterior">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+                    </button>
+
+                    <div class="esquina-carousel">
 
             <?php else : ?>
 
@@ -144,13 +148,15 @@ function esquina_recomendaciones_content($content)
 
             <?php if ($layout === 'carousel') : ?>
 
+                    </div>
+
+                    <button type="button" class="esquina-nav esquina-next" aria-label="Siguiente">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                    </button>
+
                 </div>
 
-                <button class="esquina-next">
-                    →
-                </button>
-
-                </div>
+            </div>
 
                 <?php else : ?>
 
