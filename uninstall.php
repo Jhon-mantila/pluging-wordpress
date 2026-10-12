@@ -27,3 +27,11 @@ delete_option('esquina_youtube_settings');
 */
 
 delete_option('esquina_facebook_settings');
+
+/*
+|--------------------------------------------------------------------------
+| Floating Apps
+|--------------------------------------------------------------------------
+*/
+
+delete_option('esquina_floating_apps_settings');

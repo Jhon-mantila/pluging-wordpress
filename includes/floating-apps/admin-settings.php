@@ -4,6 +4,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+require_once __DIR__ . '/icons.php';
+
 /*
 |--------------------------------------------------------------------------
 | Registro opciones
@@ -19,16 +21,33 @@ function esquina_fa_register_settings()
             'type'              => 'array',
             'sanitize_callback' => 'esquina_fa_sanitize_settings',
             'default'           => [
-                'enabled'  => 0,
-                'position' => 'bottom-right',
-                'delay'    => 2,
-                'label'    => 'Apps de Esquina',
-                'apps'     => [],
+                'enabled'    => 0,
+                'position'   => 'bottom-right',
+                'offset_x'   => 20,
+                'offset_y'   => 20,
+                'shape'      => 'circle',
+                'delay'      => 2,
+                'label'      => 'Apps de Esquina',
+                'hide'       => '7',
+                'reopen_tab' => 1,
+                'reset_at'   => 0,
+                'apps'       => [],
             ],
         ]
     );
 }
 add_action('admin_init', 'esquina_fa_register_settings');
+
+function esquina_fa_hide_options()
+{
+    return [
+        'never'   => __('Nunca ocultar (la X solo cierra el panel)', 'esquina-mis-funciones'),
+        'session' => __('Solo durante la visita actual', 'esquina-mis-funciones'),
+        '1'       => __('1 día', 'esquina-mis-funciones'),
+        '7'       => __('7 días', 'esquina-mis-funciones'),
+        '30'      => __('30 días', 'esquina-mis-funciones'),
+    ];
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +59,8 @@ function esquina_fa_sanitize_settings($input)
 {
     $positions = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
     $input     = is_array($input) ? $input : [];
+    $current   = get_option('esquina_floating_apps_settings', []);
+    $current   = is_array($current) ? $current : [];
 
     $position = isset($input['position']) ? sanitize_text_field($input['position']) : 'bottom-right';
     if (!in_array($position, $positions, true)) {
@@ -51,17 +72,35 @@ function esquina_fa_sanitize_settings($input)
         $label = 'Apps de Esquina';
     }
 
+    $hide = isset($input['hide']) ? sanitize_text_field((string) $input['hide']) : '7';
+    if (!array_key_exists($hide, esquina_fa_hide_options())) {
+        $hide = '7';
+    }
+
+    $shape = isset($input['shape']) ? sanitize_text_field($input['shape']) : 'circle';
+    if (!in_array($shape, ['circle', 'rounded'], true)) {
+        $shape = 'circle';
+    }
+
     $clean = [
-        'enabled'  => empty($input['enabled']) ? 0 : 1,
-        'position' => $position,
-        'delay'    => isset($input['delay']) ? absint($input['delay']) : 2,
-        'label'    => $label,
-        'apps'     => [],
+        'enabled'    => empty($input['enabled']) ? 0 : 1,
+        'position'   => $position,
+        'offset_x'   => isset($input['offset_x']) ? min(absint($input['offset_x']), 500) : 20,
+        'offset_y'   => isset($input['offset_y']) ? min(absint($input['offset_y']), 500) : 20,
+        'shape'      => $shape,
+        'delay'      => isset($input['delay']) ? absint($input['delay']) : 2,
+        'label'      => $label,
+        'hide'       => $hide,
+        'reopen_tab' => empty($input['reopen_tab']) ? 0 : 1,
+        'reset_at'   => isset($input['reset_at']) ? absint($input['reset_at']) : absint($current['reset_at'] ?? 0),
+        'apps'       => [],
     ];
 
     if (empty($input['apps']) || !is_array($input['apps'])) {
         return $clean;
     }
+
+    $icons = esquina_fa_icons();
 
     foreach ($input['apps'] as $app) {
         if (count($clean['apps']) >= 4 || !is_array($app)) {
@@ -75,7 +114,13 @@ function esquina_fa_sanitize_settings($input)
             continue;
         }
 
+        $svg = sanitize_text_field($app['svg'] ?? '');
+        if (!isset($icons[$svg])) {
+            $svg = '';
+        }
+
         $clean['apps'][] = [
+            'svg'  => $svg,
             'icon' => esc_url_raw($app['icon'] ?? ''),
             'name' => $name,
             'desc' => sanitize_text_field($app['desc'] ?? ''),
@@ -85,6 +130,34 @@ function esquina_fa_sanitize_settings($input)
 
     return $clean;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Volver a mostrar a todos los visitantes
+|--------------------------------------------------------------------------
+*/
+
+function esquina_fa_handle_reset()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die(esc_html__('No tienes permisos para hacer esto.', 'esquina-mis-funciones'));
+    }
+
+    check_admin_referer('esquina_fa_reset');
+
+    $options = get_option('esquina_floating_apps_settings', []);
+    $options = is_array($options) ? $options : [];
+
+    $options['reset_at'] = time();
+    update_option('esquina_floating_apps_settings', $options);
+
+    wp_safe_redirect(add_query_arg(
+        ['page' => 'esquina-floating-apps', 'esquina_fa_reset' => 1],
+        admin_url('admin.php')
+    ));
+    exit;
+}
+add_action('admin_post_esquina_fa_reset', 'esquina_fa_handle_reset');
 
 /*
 |--------------------------------------------------------------------------
@@ -156,6 +229,12 @@ function esquina_fa_page()
 
     <h1><?php esc_html_e('Floating Apps', 'esquina-mis-funciones'); ?></h1>
 
+    <?php if (!empty($_GET['esquina_fa_reset'])) : ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php esc_html_e('Listo: el widget volverá a mostrarse a todos los visitantes que lo habían cerrado.', 'esquina-mis-funciones'); ?></p>
+        </div>
+    <?php endif; ?>
+
     <form method="post" action="options.php" id="esquina-fa-settings-form">
 
         <?php settings_fields('esquina_floating_apps_group'); ?>
@@ -189,6 +268,52 @@ function esquina_fa_page()
             </tr>
 
             <tr>
+                <th><?php esc_html_e('Separación del borde (px)', 'esquina-mis-funciones'); ?></th>
+                <td>
+                    <label>
+                        <?php esc_html_e('Horizontal', 'esquina-mis-funciones'); ?>
+                        <input
+                            type="number"
+                            min="0"
+                            max="500"
+                            step="1"
+                            name="esquina_floating_apps_settings[offset_x]"
+                            value="<?php echo esc_attr((string) absint($options['offset_x'] ?? 20)); ?>"
+                            class="small-text">
+                    </label>
+                    &nbsp;
+                    <label>
+                        <?php esc_html_e('Vertical', 'esquina-mis-funciones'); ?>
+                        <input
+                            type="number"
+                            min="0"
+                            max="500"
+                            step="1"
+                            name="esquina_floating_apps_settings[offset_y]"
+                            value="<?php echo esc_attr((string) absint($options['offset_y'] ?? 20)); ?>"
+                            class="small-text">
+                    </label>
+                    <p class="description">
+                        <?php esc_html_e('Si el tema tiene un botón de «subir» en la misma esquina, aumenta la separación vertical (por ejemplo 90) u horizontal para que no se tapen.', 'esquina-mis-funciones'); ?>
+                    </p>
+                </td>
+            </tr>
+
+            <tr>
+                <th><?php esc_html_e('Forma del botón', 'esquina-mis-funciones'); ?></th>
+                <td>
+                    <select name="esquina_floating_apps_settings[shape]">
+                        <option value="circle" <?php selected($options['shape'] ?? 'circle', 'circle'); ?>>
+                            <?php esc_html_e('Circular', 'esquina-mis-funciones'); ?>
+                        </option>
+                        <option value="rounded" <?php selected($options['shape'] ?? 'circle', 'rounded'); ?>>
+                            <?php esc_html_e('Cuadrado redondeado', 'esquina-mis-funciones'); ?>
+                        </option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr>
                 <th><?php esc_html_e('Retardo antes de aparecer (segundos)', 'esquina-mis-funciones'); ?></th>
                 <td>
                     <input
@@ -213,10 +338,39 @@ function esquina_fa_page()
             </tr>
 
             <tr>
+                <th><?php esc_html_e('Al cerrar con la X, ocultar durante', 'esquina-mis-funciones'); ?></th>
+                <td>
+                    <select name="esquina_floating_apps_settings[hide]">
+                        <?php foreach (esquina_fa_hide_options() as $value => $label) : ?>
+                            <option
+                                value="<?php echo esc_attr($value); ?>"
+                                <?php selected((string) ($options['hide'] ?? '7'), (string) $value); ?>>
+                                <?php echo esc_html($label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+            </tr>
+
+            <tr>
+                <th><?php esc_html_e('Pestaña para reabrir', 'esquina-mis-funciones'); ?></th>
+                <td>
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="esquina_floating_apps_settings[reopen_tab]"
+                            value="1"
+                            <?php checked(!empty($options['reopen_tab'] ?? 1)); ?>>
+                        <?php esc_html_e('Tras cerrar con la X, dejar una pestaña pequeña en el borde para volver a abrirlo', 'esquina-mis-funciones'); ?>
+                    </label>
+                </td>
+            </tr>
+
+            <tr>
                 <th><?php esc_html_e('Aplicaciones', 'esquina-mis-funciones'); ?></th>
                 <td>
                     <p class="description">
-                        <?php esc_html_e('Hasta 4 aplicaciones. El nombre y la URL son obligatorios.', 'esquina-mis-funciones'); ?>
+                        <?php esc_html_e('Hasta 4 aplicaciones. El nombre y la URL son obligatorios. Si eliges un icono predefinido se usa ese; si no, la imagen.', 'esquina-mis-funciones'); ?>
                     </p>
 
                     <div id="esquina-fa-apps">
@@ -241,6 +395,20 @@ function esquina_fa_page()
 
         <?php submit_button(); ?>
 
+    </form>
+
+    <hr>
+
+    <h2><?php esc_html_e('Volver a mostrar el widget', 'esquina-mis-funciones'); ?></h2>
+
+    <p class="description">
+        <?php esc_html_e('Hace que el widget vuelva a aparecer a todos los visitantes que lo cerraron con la X (incluido tu navegador). Si usas caché de páginas, vacíala después.', 'esquina-mis-funciones'); ?>
+    </p>
+
+    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+        <input type="hidden" name="action" value="esquina_fa_reset">
+        <?php wp_nonce_field('esquina_fa_reset'); ?>
+        <?php submit_button(__('Volver a mostrar a todos los visitantes', 'esquina-mis-funciones'), 'secondary', 'submit', false); ?>
     </form>
 
 </div>
@@ -275,6 +443,21 @@ function esquina_fa_page()
         object-fit: cover;
         border-radius: 8px;
     }
+
+    .esquina-fa-admin__svg {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        color: #fff;
+    }
+
+    .esquina-fa-admin__svg[hidden],
+    .esquina-fa-admin__preview[hidden] {
+        display: none;
+    }
 </style>
 
     <?php
@@ -288,11 +471,13 @@ function esquina_fa_page()
 
 function esquina_fa_app_row($index, $app)
 {
-    $icon = isset($app['icon']) ? $app['icon'] : '';
-    $name = isset($app['name']) ? $app['name'] : '';
-    $desc = isset($app['desc']) ? $app['desc'] : '';
-    $url  = isset($app['url']) ? $app['url'] : '';
-    $base = 'esquina_floating_apps_settings[apps][' . $index . ']';
+    $icons = esquina_fa_icons();
+    $svg   = isset($app['svg'], $icons[$app['svg']]) ? $app['svg'] : '';
+    $icon  = isset($app['icon']) ? $app['icon'] : '';
+    $name  = isset($app['name']) ? $app['name'] : '';
+    $desc  = isset($app['desc']) ? $app['desc'] : '';
+    $url   = isset($app['url']) ? $app['url'] : '';
+    $base  = 'esquina_floating_apps_settings[apps][' . $index . ']';
     ?>
     <div class="esquina-fa-admin__row">
         <div class="esquina-fa-admin__toolbar">
@@ -315,7 +500,19 @@ function esquina_fa_app_row($index, $app)
         </div>
 
         <p>
-            <label><?php esc_html_e('Icono', 'esquina-mis-funciones'); ?></label><br>
+            <label><?php esc_html_e('Icono predefinido', 'esquina-mis-funciones'); ?></label><br>
+            <select class="esquina-fa-admin__svg-select" data-field="svg" name="<?php echo esc_attr($base); ?>[svg]">
+                <option value=""><?php esc_html_e('— Usar imagen —', 'esquina-mis-funciones'); ?></option>
+                <?php foreach ($icons as $key => $data) : ?>
+                    <option value="<?php echo esc_attr($key); ?>" <?php selected($svg, $key); ?>>
+                        <?php echo esc_html($data['label']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </p>
+
+        <p>
+            <label><?php esc_html_e('Imagen', 'esquina-mis-funciones'); ?></label><br>
             <input
                 type="url"
                 class="regular-text esquina-fa-admin__icon"
@@ -328,13 +525,19 @@ function esquina_fa_app_row($index, $app)
         </p>
 
         <p>
+            <span
+                class="esquina-fa-admin__svg"
+                style="background: <?php echo esc_attr($svg !== '' ? $icons[$svg]['color'] : '#2563eb'); ?>"
+                <?php echo $svg === '' ? 'hidden' : ''; ?>>
+                <?php echo $svg !== '' ? esquina_fa_svg_markup($svg) : ''; ?>
+            </span>
             <img
                 class="esquina-fa-admin__preview"
                 alt=""
                 width="40"
                 height="40"
                 src="<?php echo esc_url($icon); ?>"
-                <?php echo $icon === '' ? 'hidden' : ''; ?>>
+                <?php echo ($svg !== '' || $icon === '') ? 'hidden' : ''; ?>>
         </p>
 
         <p>
@@ -386,10 +589,19 @@ function esquina_fa_admin_script()
         'mediaTitle'  => __('Elegir icono', 'esquina-mis-funciones'),
         'mediaButton' => __('Usar esta imagen', 'esquina-mis-funciones'),
     ];
+
+    $svgs = [];
+    foreach (esquina_fa_icons() as $key => $data) {
+        $svgs[$key] = [
+            'color'  => $data['color'],
+            'markup' => esquina_fa_svg_markup($key),
+        ];
+    }
     ?>
     <script>
     (function () {
         const i18n = <?php echo wp_json_encode($i18n); ?>;
+        const svgs = <?php echo wp_json_encode($svgs); ?>;
         const list = document.getElementById('esquina-fa-apps');
         const addButton = document.getElementById('esquina-fa-add');
         const form = document.getElementById('esquina-fa-settings-form');
@@ -409,6 +621,31 @@ function esquina_fa_admin_script()
                 });
             });
             addButton.disabled = rows().length >= maxApps;
+        };
+
+        const refreshPreview = (row) => {
+            const select = row.querySelector('.esquina-fa-admin__svg-select');
+            const input = row.querySelector('.esquina-fa-admin__icon');
+            const svgBox = row.querySelector('.esquina-fa-admin__svg');
+            const preview = row.querySelector('.esquina-fa-admin__preview');
+            const key = select ? select.value : '';
+            const icon = input ? input.value.trim() : '';
+
+            if (svgBox) {
+                if (key && svgs[key]) {
+                    svgBox.innerHTML = svgs[key].markup;
+                    svgBox.style.background = svgs[key].color;
+                    svgBox.hidden = false;
+                } else {
+                    svgBox.innerHTML = '';
+                    svgBox.hidden = true;
+                }
+            }
+
+            if (preview) {
+                preview.src = icon;
+                preview.hidden = Boolean(key) || icon === '';
+            }
         };
 
         const bindRow = (row) => {
@@ -499,14 +736,14 @@ function esquina_fa_admin_script()
                 frame.on('select', () => {
                     const attachment = frame.state().get('selection').first().toJSON();
                     const input = row.querySelector('.esquina-fa-admin__icon');
-                    const preview = row.querySelector('.esquina-fa-admin__preview');
+                    const select = row.querySelector('.esquina-fa-admin__svg-select');
                     if (input) {
                         input.value = attachment.url || '';
                     }
-                    if (preview) {
-                        preview.src = attachment.url || '';
-                        preview.hidden = !attachment.url;
+                    if (select) {
+                        select.value = '';
                     }
+                    refreshPreview(row);
                 });
 
                 frame.open();
@@ -519,13 +756,20 @@ function esquina_fa_admin_script()
             }
 
             const row = event.target.closest('.esquina-fa-admin__row');
-            const preview = row ? row.querySelector('.esquina-fa-admin__preview') : null;
-            if (!preview) {
+            if (row) {
+                refreshPreview(row);
+            }
+        });
+
+        list.addEventListener('change', (event) => {
+            if (!event.target.classList.contains('esquina-fa-admin__svg-select')) {
                 return;
             }
 
-            preview.src = event.target.value;
-            preview.hidden = event.target.value === '';
+            const row = event.target.closest('.esquina-fa-admin__row');
+            if (row) {
+                refreshPreview(row);
+            }
         });
 
         addButton.addEventListener('click', () => {
