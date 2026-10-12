@@ -70,10 +70,169 @@ function esquina_fb_preview_text( $text, $limit = 140 ) {
 }
 
 /**
+ * Versión del payload en caché (cambiar al alterar normalización de posts).
+ */
+const ESQUINA_FB_CACHE_VERSION = 'v2_link_images';
+
+/**
+ * Hosts permitidos para fallback de imagen desde WordPress (sin SSRF abierto).
+ *
+ * @return string[]
+ */
+function esquina_fb_allowed_link_hosts() {
+	$hosts = array();
+
+	foreach ( array( home_url(), site_url() ) as $base ) {
+		$host = wp_parse_url( $base, PHP_URL_HOST );
+		if ( ! $host ) {
+			continue;
+		}
+		$host = strtolower( (string) $host );
+		$hosts[] = $host;
+
+		// Facebook suele enlazar con o sin www aunque WordPress use uno u otro.
+		if ( 0 === strpos( $host, 'www.' ) ) {
+			$hosts[] = substr( $host, 4 );
+		} else {
+			$hosts[] = 'www.' . $host;
+		}
+	}
+
+	$hosts = array_unique( array_filter( $hosts ) );
+
+	/**
+	 * Hosts extra (multisite, dominio alternativo, otro sitio de la misma red, etc.).
+	 *
+	 * @param string[] $hosts Lista de hosts permitidos.
+	 */
+	return apply_filters( 'esquina_fb_local_image_hosts', $hosts );
+}
+
+/**
+ * Comprueba si una URL pertenece a un host permitido (este WordPress, sin SSRF abierto).
+ *
+ * @param string $url URL a comprobar.
+ * @return bool
+ */
+function esquina_fb_url_is_allowed_local( $url ) {
+	$url = esc_url_raw( (string) $url );
+	if ( ! $url ) {
+		return false;
+	}
+
+	$host = wp_parse_url( $url, PHP_URL_HOST );
+	if ( ! $host ) {
+		return false;
+	}
+
+	return in_array( strtolower( (string) $host ), esquina_fb_allowed_link_hosts(), true );
+}
+
+/**
+ * Imagen destacada (o primera del contenido) de un artículo WP a partir de su URL pública.
+ *
+ * @param string $url URL del artículo (share/link).
+ * @return string URL de imagen o vacío.
+ */
+function esquina_fb_image_from_local_url( $url ) {
+	if ( ! esquina_fb_url_is_allowed_local( $url ) ) {
+		return '';
+	}
+
+	$post_id = url_to_postid( $url );
+
+	if ( ! $post_id ) {
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		if ( $path ) {
+			$post_id = url_to_postid( home_url( $path ) );
+		}
+	}
+
+	if ( ! $post_id ) {
+		return '';
+	}
+
+	$thumb = get_the_post_thumbnail_url( $post_id, 'large' );
+	if ( $thumb ) {
+		return esc_url_raw( $thumb );
+	}
+
+	$post = get_post( $post_id );
+	if ( ! $post || empty( $post->post_content ) ) {
+		return '';
+	}
+
+	if ( preg_match( '/<img[^>]+src=["\']([^"\']+)["\']/i', $post->post_content, $matches ) ) {
+		$img = esc_url_raw( $matches[1] );
+		if ( $img && esquina_fb_url_is_allowed_local( $img ) ) {
+			return $img;
+		}
+	}
+
+	return '';
+}
+
+/**
+ * URL de preview en `media.image` de un attachment Graph.
+ *
+ * @param array $att Attachment crudo.
+ * @return string
+ */
+function esquina_fb_attachment_image_src( $att ) {
+	if ( ! is_array( $att ) ) {
+		return '';
+	}
+
+	if ( ! empty( $att['media']['image']['src'] ) && is_string( $att['media']['image']['src'] ) ) {
+		return $att['media']['image']['src'];
+	}
+
+	return '';
+}
+
+/**
+ * URL del enlace compartido en un attachment (share / link).
+ *
+ * @param array $att Attachment crudo.
+ * @return string
+ */
+function esquina_fb_attachment_link_url( $att ) {
+	if ( ! is_array( $att ) ) {
+		return '';
+	}
+
+	foreach ( array( 'unshimmed_url', 'url' ) as $key ) {
+		if ( ! empty( $att[ $key ] ) && is_string( $att[ $key ] ) ) {
+			return $att[ $key ];
+		}
+	}
+
+	if ( ! empty( $att['target']['url'] ) && is_string( $att['target']['url'] ) ) {
+		return $att['target']['url'];
+	}
+
+	return '';
+}
+
+/**
+ * Indica si el media_type de Graph corresponde a un enlace compartido.
+ *
+ * @param string $media_type Valor de media_type.
+ * @return bool
+ */
+function esquina_fb_is_link_media_type( $media_type ) {
+	$media_type = strtolower( (string) $media_type );
+
+	return in_array( $media_type, array( 'share', 'link' ), true );
+}
+
+/**
  * Extrae imagen / video del primer attachment útil (incluye subattachments).
  *
+ * Soporta photo, video, share/link y previews con imagen en media.image.
+ *
  * @param array $attachments_data Lista `attachments.data` del post.
- * @return array{type:string,video:string,image:string}|null
+ * @return array{type:string,video:string,image:string,link_url:string}|null
  */
 function esquina_fb_first_attachment_media( $attachments_data ) {
 	if ( empty( $attachments_data ) || ! is_array( $attachments_data ) ) {
@@ -81,21 +240,50 @@ function esquina_fb_first_attachment_media( $attachments_data ) {
 	}
 
 	foreach ( $attachments_data as $att ) {
-		$mt = isset( $att['media_type'] ) ? $att['media_type'] : '';
+		if ( ! is_array( $att ) ) {
+			continue;
+		}
+
+		$mt = isset( $att['media_type'] ) ? (string) $att['media_type'] : '';
 
 		if ( 'video' === $mt && ! empty( $att['media']['source'] ) ) {
 			return array(
-				'type'  => 'video',
-				'video' => $att['media']['source'],
-				'image' => isset( $att['media']['image']['src'] ) ? $att['media']['image']['src'] : '',
+				'type'      => 'video',
+				'video'     => $att['media']['source'],
+				'image'     => esquina_fb_attachment_image_src( $att ),
+				'link_url'  => '',
 			);
 		}
 
-		if ( 'photo' === $mt && ! empty( $att['media']['image']['src'] ) ) {
+		if ( 'photo' === $mt ) {
+			$img = esquina_fb_attachment_image_src( $att );
+			if ( $img ) {
+				return array(
+					'type'      => 'photo',
+					'video'     => '',
+					'image'     => $img,
+					'link_url'  => '',
+				);
+			}
+		}
+
+		if ( esquina_fb_is_link_media_type( $mt ) ) {
 			return array(
-				'type'  => 'photo',
-				'video' => '',
-				'image' => $att['media']['image']['src'],
+				'type'      => 'link',
+				'video'     => '',
+				'image'     => esquina_fb_attachment_image_src( $att ),
+				'link_url'  => esquina_fb_attachment_link_url( $att ),
+			);
+		}
+
+		$img       = esquina_fb_attachment_image_src( $att );
+		$link_url  = esquina_fb_attachment_link_url( $att );
+		if ( $img && $link_url ) {
+			return array(
+				'type'      => 'link',
+				'video'     => '',
+				'image'     => $img,
+				'link_url'  => $link_url,
 			);
 		}
 
@@ -139,14 +327,24 @@ function esquina_fb_normalize_graph_post( $item ) {
 	$media_type = 'none';
 	$video      = '';
 	$image      = '';
+	$link_url   = '';
 
 	$attachments = isset( $item['attachments']['data'] ) ? $item['attachments']['data'] : array();
 	$media       = esquina_fb_first_attachment_media( $attachments );
 
 	if ( $media ) {
 		$media_type = $media['type'];
-		$video      = $media['video'] ? esc_url_raw( $media['video'] ) : '';
-		$image      = $media['image'] ? esc_url_raw( $media['image'] ) : '';
+		$video      = ! empty( $media['video'] ) ? esc_url_raw( $media['video'] ) : '';
+		$image      = ! empty( $media['image'] ) ? esc_url_raw( $media['image'] ) : '';
+		$link_url   = ! empty( $media['link_url'] ) ? esc_url_raw( $media['link_url'] ) : '';
+	}
+
+	// Fallback: imagen del artículo en WordPress cuando Graph no envía preview (enlaces propios).
+	if ( ! $image && $link_url ) {
+		$image = esquina_fb_image_from_local_url( $link_url );
+		if ( $image && 'none' === $media_type ) {
+			$media_type = 'link';
+		}
 	}
 
 	return array(
@@ -190,7 +388,7 @@ function esquina_fb_fetch_posts_request( $page_id, $limit, $after = '' ) {
 	}
 	$limit = min( 100, $limit );
 
-	$fields = 'id,message,created_time,permalink_url,attachments{media_type,media,subattachments}';
+	$fields = 'id,message,created_time,permalink_url,attachments{media_type,media,url,title,description,unshimmed_url,subattachments{media_type,media,url,unshimmed_url}}';
 
 	$args = array(
 		'fields'         => $fields,
@@ -206,7 +404,7 @@ function esquina_fb_fetch_posts_request( $page_id, $limit, $after = '' ) {
 
 	/** Primer lote: cache corto para no golpear la API en cada vista. */
 	$use_cache = ( '' === $after );
-	$cache_key = 'esquina_fb_' . md5( $page_id . '_' . $limit . '_' . $after );
+	$cache_key = 'esquina_fb_' . ESQUINA_FB_CACHE_VERSION . '_' . md5( $page_id . '_' . $limit . '_' . $after );
 
 	if ( $use_cache ) {
 		$cached = get_transient( $cache_key );
@@ -446,3 +644,30 @@ function esquina_fb_ajax_more() {
 
 add_action( 'wp_ajax_esquina_fb_more', 'esquina_fb_ajax_more' );
 add_action( 'wp_ajax_nopriv_esquina_fb_more', 'esquina_fb_ajax_more' );
+
+/*
+ * Ejemplo anonimizado — post de enlace (Graph v25, /{page-id}/posts):
+ *
+ * {
+ *   "id": "PAGEID_POSTID",
+ *   "message": "Texto promocional del artículo…",
+ *   "created_time": "2026-03-01T12:00:00+0000",
+ *   "permalink_url": "https://www.facebook.com/PAGE/posts/POSTID",
+ *   "attachments": {
+ *     "data": [{
+ *       "media_type": "share",
+ *       "url": "https://esquinagamers.com/ejemplo-articulo/",
+ *       "unshimmed_url": "https://esquinagamers.com/ejemplo-articulo/",
+ *       "title": "Título Open Graph del artículo",
+ *       "description": "Descripción breve…",
+ *       "media": {
+ *         "image": {
+ *           "height": 630,
+ *           "width": 1200,
+ *           "src": "https://scontent.xx.fbcdn.net/v/…/preview.jpg"
+ *         }
+ *       }
+ *     }]
+ *   }
+ * }
+ */

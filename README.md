@@ -271,6 +271,13 @@ esquina_fb_page_access_token
 - Consume publicaciones usando Facebook Graph API.
 - Compatible con carga dinámica.
 - Utiliza el token configurado en `wp-config.php` o en las opciones de WordPress.
+- **Posts tipo enlace/share** (solo `message` + URL del artículo): muestra miniatura desde Graph (`attachments.media.image`) o, si la URL apunta a **este mismo sitio** WordPress, imagen destacada del artículo.
+
+---
+
+## Changelog (Facebook)
+
+- **1.6.6** — Soporte de imágenes en posts tipo enlace/share (Graph + fallback WP con URLs del propio sitio; filtro `esquina_fb_local_image_hosts` para hosts adicionales).
 
 ---
 
