@@ -55,7 +55,7 @@ function esquina_fa_get_settings()
         return is_array($app) && !empty($app['name']) && !empty($app['url']);
     });
 
-    $settings['apps']       = array_slice(array_values($apps), 0, 4);
+    $settings['apps']       = array_slice(array_values($apps), 0, 12);
     $settings['enabled']    = !empty($settings['enabled']);
     $settings['reopen_tab'] = !empty($settings['reopen_tab']);
     $settings['delay']      = absint($settings['delay']);

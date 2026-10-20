@@ -103,7 +103,7 @@ function esquina_fa_sanitize_settings($input)
     $icons = esquina_fa_icons();
 
     foreach ($input['apps'] as $app) {
-        if (count($clean['apps']) >= 4 || !is_array($app)) {
+        if (count($clean['apps']) >= 12 || !is_array($app)) {
             continue;
         }
 
@@ -214,7 +214,7 @@ function esquina_fa_page()
     }
 
     $apps = isset($options['apps']) && is_array($options['apps']) ? $options['apps'] : [];
-    $apps = array_slice($apps, 0, 4);
+    $apps = array_slice($apps, 0, 12);
 
     $positions = [
         'bottom-right' => __('Inferior derecha', 'esquina-mis-funciones'),
@@ -370,7 +370,7 @@ function esquina_fa_page()
                 <th><?php esc_html_e('Aplicaciones', 'esquina-mis-funciones'); ?></th>
                 <td>
                     <p class="description">
-                        <?php esc_html_e('Hasta 4 aplicaciones. El nombre y la URL son obligatorios. Si eliges un icono predefinido se usa ese; si no, la imagen.', 'esquina-mis-funciones'); ?>
+                        <?php esc_html_e('Hasta 12 aplicaciones. El nombre y la URL son obligatorios. Si eliges un icono predefinido se usa ese; si no, la imagen.', 'esquina-mis-funciones'); ?>
                     </p>
 
                     <div id="esquina-fa-apps">
@@ -414,13 +414,22 @@ function esquina_fa_page()
 </div>
 
 <style>
+    #esquina-fa-apps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+        max-width: 1100px;
+        align-items: start;
+    }
+
     .esquina-fa-admin__row {
-        margin: 0 0 12px;
+        margin: 0;
         padding: 12px;
         background: #fff;
         border: 1px solid #dcdcde;
         border-radius: 8px;
-        max-width: 720px;
+        min-width: 0;
     }
 
     .esquina-fa-admin__row.is-dragging {
@@ -429,12 +438,18 @@ function esquina_fa_page()
 
     .esquina-fa-admin__toolbar {
         display: flex;
+        flex-wrap: wrap;
         gap: 6px;
         margin-bottom: 8px;
     }
 
     .esquina-fa-admin__drag {
         cursor: grab;
+    }
+
+    .esquina-fa-admin__row .regular-text {
+        width: 100%;
+        max-width: 100%;
     }
 
     .esquina-fa-admin__preview {
@@ -457,6 +472,18 @@ function esquina_fa_page()
     .esquina-fa-admin__svg[hidden],
     .esquina-fa-admin__preview[hidden] {
         display: none;
+    }
+
+    @media (max-width: 1280px) {
+        #esquina-fa-apps {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 782px) {
+        #esquina-fa-apps {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -584,7 +611,7 @@ function esquina_fa_app_row($index, $app)
 function esquina_fa_admin_script()
 {
     $i18n = [
-        'max'         => __('Máximo 4 aplicaciones.', 'esquina-mis-funciones'),
+        'max'         => __('Máximo 12 aplicaciones.', 'esquina-mis-funciones'),
         'required'    => __('Cada aplicación necesita nombre y URL.', 'esquina-mis-funciones'),
         'mediaTitle'  => __('Elegir icono', 'esquina-mis-funciones'),
         'mediaButton' => __('Usar esta imagen', 'esquina-mis-funciones'),
@@ -606,7 +633,7 @@ function esquina_fa_admin_script()
         const addButton = document.getElementById('esquina-fa-add');
         const form = document.getElementById('esquina-fa-settings-form');
         const template = document.getElementById('esquina-fa-app-template');
-        const maxApps = 4;
+        const maxApps = 12;
 
         if (!list || !addButton || !form || !template) {
             return;

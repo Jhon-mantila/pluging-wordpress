@@ -49,3 +49,10 @@ widget flotante de apps en el frontend
 
 require_once ESQUINA_MF_PATH . 'includes/floating-apps/admin-settings.php';
 require_once ESQUINA_MF_PATH . 'includes/floating-apps/renderer.php';
+
+/*
+fila de apps al inicio de cada entrada individual
+*/
+
+require_once ESQUINA_MF_PATH . 'includes/apps-bar/admin-settings.php';
+require_once ESQUINA_MF_PATH . 'includes/apps-bar/renderer.php';

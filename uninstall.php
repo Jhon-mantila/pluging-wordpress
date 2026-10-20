@@ -35,3 +35,11 @@ delete_option('esquina_facebook_settings');
 */
 
 delete_option('esquina_floating_apps_settings');
+
+/*
+|--------------------------------------------------------------------------
+| Apps Bar (fila en entradas)
+|--------------------------------------------------------------------------
+*/
+
+delete_option('esquina_apps_bar_settings');
