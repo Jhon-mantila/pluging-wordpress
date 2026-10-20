@@ -1,13 +1,15 @@
 .esquina-fa {
     position: fixed;
     z-index: 99999;
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
+    display: block;
+    width: 56px;
+    height: 56px;
     opacity: 0;
     transition: opacity 0.3s ease;
     font-family: inherit;
     line-height: 1.4;
+    /* El contenedor no bloquea clics (buscador, etc.). Solo hijos interactivos. */
+    pointer-events: none;
 }
 
 .esquina-fa[hidden] {
@@ -25,27 +27,28 @@
 .esquina-fa--bottom-right {
     right: var(--esquina-fa-x, 20px);
     bottom: var(--esquina-fa-y, 20px);
-    flex-direction: row-reverse;
 }
 
 .esquina-fa--bottom-left {
     left: var(--esquina-fa-x, 20px);
     bottom: var(--esquina-fa-y, 20px);
-    flex-direction: row;
 }
 
 .esquina-fa--top-right {
     right: var(--esquina-fa-x, 20px);
     top: var(--esquina-fa-y, 20px);
-    flex-direction: row-reverse;
-    align-items: flex-start;
 }
 
 .esquina-fa--top-left {
     left: var(--esquina-fa-x, 20px);
     top: var(--esquina-fa-y, 20px);
-    flex-direction: row;
-    align-items: flex-start;
+}
+
+@media (max-width: 600px) {
+    .esquina-fa {
+        width: 48px;
+        height: 48px;
+    }
 }
 
 /* Botón */
@@ -68,6 +71,7 @@
     cursor: pointer;
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+    pointer-events: auto;
 }
 
 .esquina-fa__toggle:hover {
@@ -99,6 +103,7 @@
 /* Panel */
 
 .esquina-fa__panel {
+    position: absolute;
     width: 300px;
     max-width: calc(100vw - 48px);
     overflow: hidden;
@@ -110,21 +115,32 @@
     visibility: hidden;
     transform: scale(0.9);
     transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
 }
 
+/* Panel anclado al botón, sin agrandar el área clicable del contenedor */
+
 .esquina-fa--bottom-right .esquina-fa__panel {
+    right: 0;
+    bottom: calc(100% + 12px);
     transform-origin: bottom right;
 }
 
 .esquina-fa--bottom-left .esquina-fa__panel {
+    left: 0;
+    bottom: calc(100% + 12px);
     transform-origin: bottom left;
 }
 
 .esquina-fa--top-right .esquina-fa__panel {
+    right: 0;
+    top: calc(100% + 12px);
     transform-origin: top right;
 }
 
 .esquina-fa--top-left .esquina-fa__panel {
+    left: 0;
+    top: calc(100% + 12px);
     transform-origin: top left;
 }
 
@@ -132,6 +148,7 @@
     opacity: 1;
     visibility: visible;
     transform: scale(1);
+    pointer-events: auto;
 }
 
 /* Header */
@@ -232,6 +249,8 @@
 
 .esquina-fa__reopen {
     display: none;
+    position: absolute;
+    top: 50%;
     align-items: center;
     justify-content: center;
     width: 28px;
@@ -247,6 +266,8 @@
     opacity: 0.7;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
     transition: opacity 0.15s ease, width 0.15s ease;
+    pointer-events: auto;
+    transform: translateY(-50%);
 }
 
 .esquina-fa__reopen:hover,
@@ -262,13 +283,13 @@
 
 .esquina-fa--bottom-right .esquina-fa__reopen,
 .esquina-fa--top-right .esquina-fa__reopen {
-    margin-right: calc(var(--esquina-fa-x, 20px) * -1);
+    right: calc(var(--esquina-fa-x, 20px) * -1);
     border-radius: 8px 0 0 8px;
 }
 
 .esquina-fa--bottom-left .esquina-fa__reopen,
 .esquina-fa--top-left .esquina-fa__reopen {
-    margin-left: calc(var(--esquina-fa-x, 20px) * -1);
+    left: calc(var(--esquina-fa-x, 20px) * -1);
     border-radius: 0 8px 8px 0;
 }
 
