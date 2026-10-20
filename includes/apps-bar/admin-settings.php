@@ -36,21 +36,12 @@ function esquina_ab_svg_markup($key, $size = 24)
 
 function esquina_ab_register_settings()
 {
+    // Sin 'type' => 'array': en algunas versiones WP valida el esquema y puede
+    // vaciar la opción al guardar arrays anidados (apps).
     register_setting(
         'esquina_apps_bar_group',
         'esquina_apps_bar_settings',
-        [
-            'type'              => 'array',
-            'sanitize_callback' => 'esquina_ab_sanitize_settings',
-            'default'           => [
-                'enabled' => 0,
-                'title'   => 'Nuestras aplicaciones',
-                'style'   => 'panel',
-                'color_1' => '#2563eb',
-                'color_2' => '#0ea5e9',
-                'apps'    => [],
-            ],
-        ]
+        'esquina_ab_sanitize_settings'
     );
 }
 add_action('admin_init', 'esquina_ab_register_settings');
@@ -91,10 +82,28 @@ function esquina_ab_sanitize_hex_color($color, $fallback)
 |--------------------------------------------------------------------------
 */
 
+function esquina_ab_normalize_url($url)
+{
+    $url = is_string($url) ? trim($url) : '';
+    if ($url === '') {
+        return '';
+    }
+
+    // Si pegaron el dominio sin protocolo, intenta completar.
+    if (!preg_match('#^https?://#i', $url) && preg_match('#^[\w.-]+\.[a-z]{2,}(/.*)?$#i', $url)) {
+        $url = 'https://' . $url;
+    }
+
+    return esc_url_raw($url);
+}
+
 function esquina_ab_sanitize_settings($input)
 {
     $input = is_array($input) ? $input : [];
     $icons = esquina_ab_load_icons();
+    if (!is_array($icons)) {
+        $icons = [];
+    }
 
     $title = isset($input['title']) ? sanitize_text_field($input['title']) : '';
     if ($title === '') {
@@ -125,18 +134,18 @@ function esquina_ab_sanitize_settings($input)
         }
 
         $name = sanitize_text_field($app['name'] ?? '');
-        $url  = esc_url_raw($app['url'] ?? '');
+        $url  = esquina_ab_normalize_url($app['url'] ?? '');
 
         if ($name === '' || $url === '') {
             continue;
         }
 
-        $svg = sanitize_text_field($app['svg'] ?? '');
-        if (!isset($icons[$svg])) {
+        $svg = sanitize_key($app['svg'] ?? '');
+        if ($svg === '' || !isset($icons[$svg])) {
             $svg = '';
         }
 
-        $icon = esc_url_raw($app['icon'] ?? '');
+        $icon = esquina_ab_normalize_url($app['icon'] ?? '');
 
         // Hace falta imagen o SVG; si no hay ninguno, se descarta.
         if ($svg === '' && $icon === '') {
@@ -733,6 +742,9 @@ function esquina_ab_admin_script()
         });
 
         form.addEventListener('submit', (event) => {
+            // Reindexar siempre antes de enviar (grid / drag & drop).
+            reindex();
+
             const current = rows();
 
             if (current.length > maxApps) {

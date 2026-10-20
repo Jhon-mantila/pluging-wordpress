@@ -58,13 +58,116 @@ function esquina_ab_get_settings()
 
 function esquina_ab_is_active()
 {
-    if (is_admin()) {
+    $settings = esquina_ab_get_settings();
+
+    return !empty($settings['enabled']) && !empty($settings['apps']);
+}
+
+function esquina_ab_is_singular_post()
+{
+    return is_singular('post') || (is_single() && get_post_type() === 'post');
+}
+
+function esquina_ab_should_render()
+{
+    if (is_admin() || is_feed() || wp_doing_ajax()) {
         return false;
     }
 
-    $settings = esquina_ab_get_settings();
+    if (defined('REST_REQUEST') && REST_REQUEST) {
+        return false;
+    }
 
-    return $settings['enabled'] && !empty($settings['apps']);
+    if (!esquina_ab_is_singular_post()) {
+        return false;
+    }
+
+    if (doing_filter('get_the_excerpt')) {
+        return false;
+    }
+
+    return esquina_ab_is_active();
+}
+
+function esquina_ab_already_injected()
+{
+    return !empty($GLOBALS['esquina_ab_injected']);
+}
+
+function esquina_ab_mark_injected()
+{
+    $GLOBALS['esquina_ab_injected'] = true;
+}
+
+/**
+ * ¿Es el contenido real de la entrada consultada?
+ * Evita inyectar en header/footer Elementor/HFE que también llaman a the_content.
+ *
+ * @param string|null $content           Contenido de the_content (opcional).
+ * @param bool        $check_min_length  Exigir texto mínimo (útil en the_content).
+ */
+function esquina_ab_is_main_post_content($content = null, $check_min_length = false)
+{
+    if (!esquina_ab_is_singular_post()) {
+        return false;
+    }
+
+    if (!is_main_query()) {
+        return false;
+    }
+
+    // Header/Footer Elementor suele llamar the_content fuera del loop.
+    if (!in_the_loop()) {
+        return false;
+    }
+
+    $queried_id = (int) get_queried_object_id();
+    $current_id = (int) get_the_ID();
+
+    if ($queried_id <= 0 || $current_id <= 0 || $queried_id !== $current_id) {
+        return false;
+    }
+
+    // Fragmentos del header suelen ser muy cortos o vacíos.
+    if ($check_min_length && is_string($content) && strlen(trim(wp_strip_all_tags($content))) < 40) {
+        return false;
+    }
+
+    return true;
+}
+
+function esquina_ab_output_bar()
+{
+    if (!esquina_ab_should_render() || esquina_ab_already_injected()) {
+        return '';
+    }
+
+    $bar = esquina_ab_build_html();
+    if ($bar === '') {
+        return '';
+    }
+
+    esquina_ab_mark_injected();
+
+    return $bar;
+}
+
+function esquina_ab_maybe_prepend($content)
+{
+    if (!is_string($content)) {
+        return $content;
+    }
+
+    if (!esquina_ab_is_main_post_content($content, true)) {
+        return $content;
+    }
+
+    $bar = esquina_ab_output_bar();
+    if ($bar === '') {
+        return $content;
+    }
+
+    return $bar . $content;
 }
 
 /*
@@ -75,7 +178,7 @@ function esquina_ab_is_active()
 
 function esquina_ab_enqueue_assets()
 {
-    if (!is_singular('post') || !esquina_ab_is_active()) {
+    if (!esquina_ab_should_render()) {
         return;
     }
 
@@ -271,24 +374,34 @@ function esquina_ab_build_html()
 |--------------------------------------------------------------------------
 | Inyectar al inicio del contenido (solo single post)
 |--------------------------------------------------------------------------
+| 1) Hook nativo de Astra (más fiable en Astra + Elementor header/footer)
+| 2) the_content solo si es el post principal en el loop (evita el masthead)
+| 3) Bloque core/post-content por si usan FSE
 */
+
+function esquina_ab_render_via_astra()
+{
+    if (!esquina_ab_should_render() || esquina_ab_already_injected()) {
+        return;
+    }
+
+    // Solo en el loop del post consultado (sin chequeo de longitud).
+    if (!esquina_ab_is_main_post_content(null, false)) {
+        return;
+    }
+
+    echo esquina_ab_output_bar(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+}
+add_action('astra_entry_content_before', 'esquina_ab_render_via_astra', 5);
 
 function esquina_ab_prepend_content($content)
 {
-    if (!is_singular('post') || !in_the_loop() || !is_main_query()) {
-        return $content;
-    }
-
-    if (!esquina_ab_is_active()) {
-        return $content;
-    }
-
-    $bar = esquina_ab_build_html();
-
-    if ($bar === '') {
-        return $content;
-    }
-
-    return $bar . $content;
+    return esquina_ab_maybe_prepend($content);
 }
-add_filter('the_content', 'esquina_ab_prepend_content', 8);
+add_filter('the_content', 'esquina_ab_prepend_content', 5);
+
+function esquina_ab_prepend_post_content_block($block_content, $block)
+{
+    return esquina_ab_maybe_prepend($block_content);
+}
+add_filter('render_block_core/post-content', 'esquina_ab_prepend_post_content_block', 10, 2);
