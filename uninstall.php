@@ -35,6 +35,8 @@ delete_option('esquina_facebook_settings');
 */
 
 delete_option('esquina_floating_apps_settings');
+delete_option('esquina_fa_panel2_settings');
+delete_option('esquina_fa_tools_settings'); // legacy por si quedó de una prueba
 
 /*
 |--------------------------------------------------------------------------

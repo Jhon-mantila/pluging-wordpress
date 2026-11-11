@@ -3,7 +3,7 @@
  * Plugin Name: Mis funciones
  * Plugin URI: https://esquinaweb.com
  * Description: Snippets y shortcodes (categorías, conteos, feed Facebook, últimas entradas, YouTube) (recomendaciones).
- * Version: 1.6.9
+ * Version: 1.7.3
  * Author: Jhon mantilla
  * Author URI: https://esquinaweb.com
  * License: GPLv2 or later
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ESQUINA_MF_VERSION', '1.6.9' );
+define( 'ESQUINA_MF_VERSION', '1.7.3' );
 define( 'ESQUINA_MF_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ESQUINA_MF_URL', plugin_dir_url( __FILE__ ) );
 
@@ -47,6 +47,7 @@ require_once ESQUINA_MF_PATH . 'includes/recomendaciones/recomendaciones.php';
 widget flotante de apps en el frontend
 */
 
+require_once ESQUINA_MF_PATH . 'includes/floating-apps/instances.php';
 require_once ESQUINA_MF_PATH . 'includes/floating-apps/admin-settings.php';
 require_once ESQUINA_MF_PATH . 'includes/floating-apps/renderer.php';
 

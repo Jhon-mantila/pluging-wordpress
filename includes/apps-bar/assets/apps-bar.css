@@ -15,6 +15,14 @@
     overflow: visible;
 }
 
+.esquina-ab--placement-top {
+    margin: 0 0 1.15em;
+}
+
+.esquina-ab--placement-mid {
+    margin: 0 0 1.15em;
+}
+
 .esquina-ab *,
 .esquina-ab *::before,
 .esquina-ab *::after {

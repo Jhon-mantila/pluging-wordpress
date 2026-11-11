@@ -6,39 +6,83 @@ if (!defined('ABSPATH')) {
 
 /*
 |--------------------------------------------------------------------------
-| Settings
+| Settings (dos bloques: top / bottom)
 |--------------------------------------------------------------------------
 */
 
-function esquina_ab_get_settings()
+function esquina_ab_raw_options()
 {
-    $defaults = [
-        'enabled' => 0,
-        'title'   => 'Nuestras aplicaciones',
-        'style'   => 'panel',
-        'color_1' => '#2563eb',
-        'color_2' => '#0ea5e9',
-        'apps'    => [],
-    ];
-
     $options = get_option('esquina_apps_bar_settings', []);
+
+    return is_array($options) ? $options : [];
+}
+
+/**
+ * Convierte formato antiguo plano al nuevo { top, bottom }.
+ */
+function esquina_ab_migrate_options($options)
+{
     if (!is_array($options)) {
         $options = [];
     }
 
-    $settings = wp_parse_args($options, $defaults);
+    if (isset($options['top']) || isset($options['bottom'])) {
+        return $options;
+    }
 
-    $allowed_styles = ['panel', 'banda', 'chips'];
-    if (!in_array($settings['style'], $allowed_styles, true)) {
-        $settings['style'] = 'panel';
+    // Formato antiguo: apps/title/style en raíz → bloque top.
+    if (isset($options['apps']) || isset($options['title']) || isset($options['enabled'])) {
+        return [
+            'top' => [
+                'enabled' => $options['enabled'] ?? 0,
+                'title'   => $options['title'] ?? '',
+                'style'   => $options['style'] ?? 'panel',
+                'color_1' => $options['color_1'] ?? '#2563eb',
+                'color_2' => $options['color_2'] ?? '#0ea5e9',
+                'apps'    => $options['apps'] ?? [],
+            ],
+            'bottom' => [],
+        ];
+    }
+
+    return $options;
+}
+
+function esquina_ab_normalize_block($raw, $block_id)
+{
+    if (!function_exists('esquina_ab_get_block_meta')) {
+        require_once __DIR__ . '/admin-settings.php';
+    }
+
+    $meta = esquina_ab_get_block_meta($block_id);
+    if (!$meta) {
+        return null;
     }
 
     if (!function_exists('esquina_ab_sanitize_hex_color')) {
         require_once __DIR__ . '/admin-settings.php';
     }
 
-    $settings['color_1'] = esquina_ab_sanitize_hex_color($settings['color_1'] ?? '', '#2563eb');
-    $settings['color_2'] = esquina_ab_sanitize_hex_color($settings['color_2'] ?? '', '#0ea5e9');
+    $raw = is_array($raw) ? $raw : [];
+
+    $defaults = [
+        'enabled' => 0,
+        'title'   => $meta['default_title'],
+        'style'   => $meta['default_style'],
+        'color_1' => $meta['default_c1'],
+        'color_2' => $meta['default_c2'],
+        'apps'    => [],
+    ];
+
+    $settings = wp_parse_args($raw, $defaults);
+
+    $allowed_styles = array_keys(esquina_ab_style_options());
+    if (!in_array($settings['style'], $allowed_styles, true)) {
+        $settings['style'] = $meta['default_style'];
+    }
+
+    $settings['color_1'] = esquina_ab_sanitize_hex_color($settings['color_1'] ?? '', $meta['default_c1']);
+    $settings['color_2'] = esquina_ab_sanitize_hex_color($settings['color_2'] ?? '', $meta['default_c2']);
 
     $apps = is_array($settings['apps']) ? $settings['apps'] : [];
     $apps = array_filter($apps, function ($app) {
@@ -49,18 +93,65 @@ function esquina_ab_get_settings()
         return !empty($app['svg']) || !empty($app['icon']);
     });
 
-    $settings['apps']    = array_slice(array_values($apps), 0, 12);
-    $settings['enabled'] = !empty($settings['enabled']);
-    $settings['title']   = is_string($settings['title']) ? $settings['title'] : 'Nuestras aplicaciones';
+    $settings['apps']      = array_slice(array_values($apps), 0, (int) $meta['max_apps']);
+    $settings['enabled']   = !empty($settings['enabled']);
+    $settings['title']     = is_string($settings['title']) && $settings['title'] !== ''
+        ? $settings['title']
+        : $meta['default_title'];
+    $settings['block_id']  = $block_id;
+    $settings['kind']      = $meta['kind'];
+    $settings['placement'] = $meta['placement'];
+    $settings['meta']      = $meta;
 
     return $settings;
 }
 
+function esquina_ab_get_all_settings()
+{
+    $options = esquina_ab_migrate_options(esquina_ab_raw_options());
+    $all     = [];
+
+    foreach (esquina_ab_blocks() as $block_id => $meta) {
+        $all[$block_id] = esquina_ab_normalize_block($options[$block_id] ?? [], $block_id);
+    }
+
+    return $all;
+}
+
+function esquina_ab_get_block_settings($block_id)
+{
+    $all = esquina_ab_get_all_settings();
+
+    return isset($all[$block_id]) ? $all[$block_id] : null;
+}
+
+/** @deprecated Usar esquina_ab_get_block_settings('top') */
+function esquina_ab_get_settings()
+{
+    return esquina_ab_get_block_settings('top');
+}
+
+function esquina_ab_block_is_active($block_id)
+{
+    $settings = esquina_ab_get_block_settings($block_id);
+
+    return $settings && !empty($settings['enabled']) && !empty($settings['apps']);
+}
+
+function esquina_ab_any_active()
+{
+    foreach (array_keys(esquina_ab_blocks()) as $block_id) {
+        if (esquina_ab_block_is_active($block_id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function esquina_ab_is_active()
 {
-    $settings = esquina_ab_get_settings();
-
-    return !empty($settings['enabled']) && !empty($settings['apps']);
+    return esquina_ab_any_active();
 }
 
 function esquina_ab_is_singular_post()
@@ -86,25 +177,23 @@ function esquina_ab_should_render()
         return false;
     }
 
-    return esquina_ab_is_active();
+    return esquina_ab_any_active();
 }
 
-function esquina_ab_already_injected()
+function esquina_ab_already_injected($block_id)
 {
-    return !empty($GLOBALS['esquina_ab_injected']);
+    $key = 'esquina_ab_injected_' . $block_id;
+
+    return !empty($GLOBALS[$key]);
 }
 
-function esquina_ab_mark_injected()
+function esquina_ab_mark_injected($block_id)
 {
-    $GLOBALS['esquina_ab_injected'] = true;
+    $GLOBALS['esquina_ab_injected_' . $block_id] = true;
 }
 
 /**
  * ¿Es el contenido real de la entrada consultada?
- * Evita inyectar en header/footer Elementor/HFE que también llaman a the_content.
- *
- * @param string|null $content           Contenido de the_content (opcional).
- * @param bool        $check_min_length  Exigir texto mínimo (útil en the_content).
  */
 function esquina_ab_is_main_post_content($content = null, $check_min_length = false)
 {
@@ -116,7 +205,6 @@ function esquina_ab_is_main_post_content($content = null, $check_min_length = fa
         return false;
     }
 
-    // Header/Footer Elementor suele llamar the_content fuera del loop.
     if (!in_the_loop()) {
         return false;
     }
@@ -128,7 +216,6 @@ function esquina_ab_is_main_post_content($content = null, $check_min_length = fa
         return false;
     }
 
-    // Fragmentos del header suelen ser muy cortos o vacíos.
     if ($check_min_length && is_string($content) && strlen(trim(wp_strip_all_tags($content))) < 40) {
         return false;
     }
@@ -136,18 +223,18 @@ function esquina_ab_is_main_post_content($content = null, $check_min_length = fa
     return true;
 }
 
-function esquina_ab_output_bar()
+function esquina_ab_output_bar($block_id)
 {
-    if (!esquina_ab_should_render() || esquina_ab_already_injected()) {
+    if (!esquina_ab_should_render() || esquina_ab_already_injected($block_id) || !esquina_ab_block_is_active($block_id)) {
         return '';
     }
 
-    $bar = esquina_ab_build_html();
+    $bar = esquina_ab_build_html($block_id);
     if ($bar === '') {
         return '';
     }
 
-    esquina_ab_mark_injected();
+    esquina_ab_mark_injected($block_id);
 
     return $bar;
 }
@@ -162,12 +249,106 @@ function esquina_ab_maybe_prepend($content)
         return $content;
     }
 
-    $bar = esquina_ab_output_bar();
+    $bar = esquina_ab_output_bar('top');
     if ($bar === '') {
         return $content;
     }
 
     return $bar . $content;
+}
+
+/**
+ * Busca el final de un bloque TOC conocido (con anidación de etiquetas).
+ *
+ * @return int|false Offset absoluto justo después del bloque, o false.
+ */
+function esquina_ab_find_toc_end_offset($content)
+{
+    $open_pattern = '#<(div|nav|aside|section)\b[^>]*(?:id|class)\s*=\s*["\'][^"\']*(?:ez-toc(?:-container)?|lwptoc|toc[_-]container|table-of-contents|rank-math-toc(?:-block)?|wp-block-(?:rank-math-)?toc(?:-block)?|elementor-toc|toc-wrapper)[^"\']*["\'][^>]*>#is';
+
+    if (!preg_match($open_pattern, $content, $m, PREG_OFFSET_CAPTURE)) {
+        return false;
+    }
+
+    $tag   = strtolower($m[1][0]);
+    $pos   = $m[0][1] + strlen($m[0][0]);
+    $depth = 1;
+    $token = '#</?' . preg_quote($tag, '#') . '\b[^>]*>#i';
+
+    while ($depth > 0 && preg_match($token, $content, $tm, PREG_OFFSET_CAPTURE, $pos)) {
+        $full = $tm[0][0];
+        $at   = $tm[0][1];
+
+        if ($full[1] === '/') {
+            $depth--;
+        } else {
+            // Autocierre raro: <div ... />
+            if (substr(rtrim($full), -2) === '/>') {
+                $pos = $at + strlen($full);
+                continue;
+            }
+            $depth++;
+        }
+
+        $pos = $at + strlen($full);
+    }
+
+    return $depth === 0 ? $pos : false;
+}
+
+/**
+ * Inserta la barra de juegos tras la TOC o, si no hay, tras el primer H2.
+ * Si no encuentra ancla, la deja cerca del inicio (después del primer párrafo).
+ */
+function esquina_ab_insert_games_bar($content, $bar)
+{
+    if ($bar === '' || $content === '') {
+        return $content;
+    }
+
+    // 1) Tras contenedores típicos de tabla de contenidos.
+    $toc_end = esquina_ab_find_toc_end_offset($content);
+    if ($toc_end !== false) {
+        return substr($content, 0, $toc_end) . $bar . substr($content, $toc_end);
+    }
+
+    // 2) Tras el primer H2 del contenido.
+    if (preg_match('#</h2>#i', $content, $m, PREG_OFFSET_CAPTURE)) {
+        $end = $m[0][1] + strlen($m[0][0]);
+        return substr($content, 0, $end) . $bar . substr($content, $end);
+    }
+
+    // 3) Tras el primer H3 si no hay H2.
+    if (preg_match('#</h3>#i', $content, $m, PREG_OFFSET_CAPTURE)) {
+        $end = $m[0][1] + strlen($m[0][0]);
+        return substr($content, 0, $end) . $bar . substr($content, $end);
+    }
+
+    // 4) Tras el primer párrafo (fallback temprano, no al final).
+    if (preg_match('#</p>#i', $content, $m, PREG_OFFSET_CAPTURE)) {
+        $end = $m[0][1] + strlen($m[0][0]);
+        return substr($content, 0, $end) . $bar . substr($content, $end);
+    }
+
+    return $bar . $content;
+}
+
+function esquina_ab_maybe_insert_mid($content)
+{
+    if (!is_string($content)) {
+        return $content;
+    }
+
+    if (!esquina_ab_is_main_post_content($content, true)) {
+        return $content;
+    }
+
+    $bar = esquina_ab_output_bar('bottom');
+    if ($bar === '') {
+        return $content;
+    }
+
+    return esquina_ab_insert_games_bar($content, $bar);
 }
 
 /*
@@ -304,15 +485,15 @@ function esquina_ab_render_icon($app)
 |--------------------------------------------------------------------------
 */
 
-function esquina_ab_build_html()
+function esquina_ab_build_html($block_id = 'top')
 {
-    $settings = esquina_ab_get_settings();
+    $settings = esquina_ab_get_block_settings($block_id);
 
-    if (!$settings['enabled'] || empty($settings['apps'])) {
+    if (!$settings || !$settings['enabled'] || empty($settings['apps'])) {
         return '';
     }
 
-    $title = $settings['title'] !== '' ? $settings['title'] : __('Nuestras aplicaciones', 'esquina-mis-funciones');
+    $title = $settings['title'] !== '' ? $settings['title'] : $settings['meta']['default_title'];
     $style = $settings['style'];
     $show_caption = ($style === 'chips');
     $inline_style = sprintf(
@@ -320,11 +501,17 @@ function esquina_ab_build_html()
         esc_attr($settings['color_1']),
         esc_attr($settings['color_2'])
     );
+    $classes = sprintf(
+        'esquina-ab esquina-ab--%1$s esquina-ab--placement-%2$s esquina-ab--kind-%3$s',
+        $style,
+        $settings['placement'],
+        $settings['kind']
+    );
 
     ob_start();
     ?>
     <div
-        class="esquina-ab esquina-ab--<?php echo esc_attr($style); ?>"
+        class="<?php echo esc_attr($classes); ?>"
         style="<?php echo esc_attr($inline_style); ?>"
         role="navigation"
         aria-label="<?php echo esc_attr($title); ?>">
@@ -372,36 +559,35 @@ function esquina_ab_build_html()
 
 /*
 |--------------------------------------------------------------------------
-| Inyectar al inicio del contenido (solo single post)
+| Inyectar inicio (herramientas) y mitad temprana (juegos)
 |--------------------------------------------------------------------------
-| 1) Hook nativo de Astra (más fiable en Astra + Elementor header/footer)
-| 2) the_content solo si es el post principal en el loop (evita el masthead)
-| 3) Bloque core/post-content por si usan FSE
 */
 
-function esquina_ab_render_via_astra()
+function esquina_ab_render_top_via_astra()
 {
-    if (!esquina_ab_should_render() || esquina_ab_already_injected()) {
+    if (!esquina_ab_should_render() || esquina_ab_already_injected('top') || !esquina_ab_block_is_active('top')) {
         return;
     }
 
-    // Solo en el loop del post consultado (sin chequeo de longitud).
     if (!esquina_ab_is_main_post_content(null, false)) {
         return;
     }
 
-    echo esquina_ab_output_bar(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    echo esquina_ab_output_bar('top'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
-add_action('astra_entry_content_before', 'esquina_ab_render_via_astra', 5);
+add_action('astra_entry_content_before', 'esquina_ab_render_top_via_astra', 5);
 
-function esquina_ab_prepend_content($content)
+function esquina_ab_inject_content($content)
 {
-    return esquina_ab_maybe_prepend($content);
-}
-add_filter('the_content', 'esquina_ab_prepend_content', 5);
+    $content = esquina_ab_maybe_prepend($content);
+    $content = esquina_ab_maybe_insert_mid($content);
 
-function esquina_ab_prepend_post_content_block($block_content, $block)
-{
-    return esquina_ab_maybe_prepend($block_content);
+    return $content;
 }
-add_filter('render_block_core/post-content', 'esquina_ab_prepend_post_content_block', 10, 2);
+add_filter('the_content', 'esquina_ab_inject_content', 5);
+
+function esquina_ab_inject_post_content_block($block_content, $block)
+{
+    return esquina_ab_inject_content($block_content);
+}
+add_filter('render_block_core/post-content', 'esquina_ab_inject_post_content_block', 10, 2);
